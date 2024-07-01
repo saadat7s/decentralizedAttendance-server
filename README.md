@@ -26,6 +26,22 @@ The Decentralized Attendance System is a blockchain-based solution designed to p
 - **Express**: Web framework for building the backend server.
 - **Redux**: State management for React applications.
 
+## Smart Contracts
+
+Smart contracts for this project are developed using Solana Playground. Follow these steps to manage the smart contracts:
+
+1. **Access Solana Playground:**
+   - Go to [Solana Playground](https://beta.solpg.io/).
+
+2. **Develop Smart Contracts:**
+   - Use the online editor to write, compile, and deploy your smart contracts.
+
+3. **Integrate with Backend:**
+   - Document the addresses and APIs of deployed contracts.
+   - Update the backend configuration to interact with the deployed contracts on the Solana blockchain.
+
+Refer to the Solana Playground documentation for more details on smart contract development.
+
 ## Installation and Setup
 1. **Clone the repository:**
     ```bash
@@ -44,14 +60,10 @@ The Decentralized Attendance System is a blockchain-based solution designed to p
 3. **Configure environment variables:**
     - Create a `.env` file in the `backend` directory and add necessary configurations.
 
-4. **Compile and deploy smart contracts:**
-    ```bash
-    cd smart-contracts
-    cargo build-bpf
-    solana program deploy ./target/deploy/attendance_system.so
+
     ```
 
-5. **Run the development servers:**
+4. **Run the development servers:**
     ```bash
     cd backend
     npm start
