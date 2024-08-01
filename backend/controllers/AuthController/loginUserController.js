@@ -1,5 +1,3 @@
-// controllers/AuthController/loginUserController.js
-
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
@@ -36,7 +34,7 @@ exports.loginUser = async (req, res) => {
 
         jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' }, (err, token) => {
             if (err) throw err;
-            res.json({ token });
+            res.json({ token, publickey: user.publickey });
         });
     } catch (err) {
         console.error(err.message);

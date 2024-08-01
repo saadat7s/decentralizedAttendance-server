@@ -1,12 +1,14 @@
-// controllers/AuthController/registerUserController.js
-
 const bcrypt = require('bcryptjs');
 const { validationResult } = require('express-validator');
 const User = require('../../models/user');
+const { Keypair } = require('@solana/web3.js');
+const fs = require('fs');
+const path = require('path');
 
 exports.registerUser = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+        console.log('Validation errors:', errors.array());
         return res.status(400).json({ errors: errors.array() });
     }
 
@@ -16,15 +18,34 @@ exports.registerUser = async (req, res) => {
         // Check if user already exists
         let user = await User.findOne({ email });
         if (user) {
+            console.log('User already exists');
             return res.status(400).json({ msg: 'User already exists' });
         }
+
+        // Generate a new wallet
+        const newWallet = Keypair.generate();
+        const publickey = newWallet.publicKey.toString();
+        const secretKey = Array.from(newWallet.secretKey);
+
+        // Create the wallets directory if it doesn't exist
+        const walletsDir = path.join(__dirname, '../../wallets');
+        if (!fs.existsSync(walletsDir)) {
+            fs.mkdirSync(walletsDir, { recursive: true });
+        }
+
+        // Save the secret key securely, e.g., encrypted or in a secure store
+        const walletPath = path.join(walletsDir, `${email}.json`);
+        fs.writeFileSync(walletPath, JSON.stringify(secretKey));
+
+        console.log(`Wallet created and saved at ${walletPath}`);
 
         // Create new user
         user = new User({
             name,
             email,
             password,
-            role
+            role,
+            publickey // Store the public key in the user document
         });
 
         // Hash the password
@@ -34,9 +55,11 @@ exports.registerUser = async (req, res) => {
         // Save user to the database
         await user.save();
 
-        res.status(201).json({ msg: 'User registered successfully' });
+        console.log('User saved to the database');
+
+        res.status(201).json({ msg: 'User registered successfully', publickey });
     } catch (err) {
-        console.error(err.message);
+        console.error('Error in registration process:', err.message);
         res.status(500).send('Server error');
     }
 };
