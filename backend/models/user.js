@@ -22,7 +22,7 @@ const userSchema = new Schema({
         enum: ['teacher', 'student', 'admin'],
         required: true
     },
-    publickey: {
+    publicKey: {
         type: String,
         required: true
 

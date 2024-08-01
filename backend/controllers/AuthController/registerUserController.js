@@ -4,6 +4,7 @@ const User = require('../../models/user');
 const { Keypair } = require('@solana/web3.js');
 const fs = require('fs');
 const path = require('path');
+const Wallet = require('../../models/wallet');
 
 exports.registerUser = async (req, res) => {
     const errors = validationResult(req);
@@ -24,7 +25,7 @@ exports.registerUser = async (req, res) => {
 
         // Generate a new wallet
         const newWallet = Keypair.generate();
-        const publickey = newWallet.publicKey.toString();
+        const publicKey = newWallet.publicKey.toString();
         const secretKey = Array.from(newWallet.secretKey);
 
         // Create the wallets directory if it doesn't exist
@@ -37,7 +38,7 @@ exports.registerUser = async (req, res) => {
         const walletPath = path.join(walletsDir, `${email}.json`);
         fs.writeFileSync(walletPath, JSON.stringify(secretKey));
 
-        console.log(`Wallet created and saved at ${walletPath}`);
+        console.log(`Wallet created and saved locally at ${walletPath}`);
 
         // Create new user
         user = new User({
@@ -45,7 +46,7 @@ exports.registerUser = async (req, res) => {
             email,
             password,
             role,
-            publickey // Store the public key in the user document
+            publicKey // Store the public key in the user document
         });
 
         // Hash the password
@@ -57,7 +58,17 @@ exports.registerUser = async (req, res) => {
 
         console.log('User saved to the database');
 
-        res.status(201).json({ msg: 'User registered successfully', publickey });
+        // Save wallet to the database
+
+        const wallet = new Wallet({
+            email,
+            publicKey,
+            secretKey
+        })
+
+        await wallet.save();
+
+        res.status(201).json({ msg: 'User registered successfully', publicKey });
     } catch (err) {
         console.error('Error in registration process:', err.message);
         res.status(500).send('Server error');
