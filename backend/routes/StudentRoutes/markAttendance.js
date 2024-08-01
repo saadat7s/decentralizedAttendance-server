@@ -5,14 +5,13 @@ const { markAttendance } = require('../../controllers/StudentController/markAtte
 
 const router = express.Router();
 
-// Mark attendance route
 router.post(
-    '/',
-    [
-        check('sessionId', 'Session ID is required').not().isEmpty()
-    ],
-    auth,
-    markAttendance
+  '/',
+  [
+    check('sessionId', 'Session ID is required').not().isEmpty()
+  ],
+  auth,
+  markAttendance
 );
 
 module.exports = router;

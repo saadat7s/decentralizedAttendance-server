@@ -17,6 +17,7 @@ const teacherStartSession = require('./routes/TeacherRoutes/startSession');
 const teacherEndSession = require('./routes/TeacherRoutes/endSession');
 const adminCreateClass = require('./routes/AdminRoutes/createClass');
 const adminEditClass = require('./routes/AdminRoutes/editClass'); 
+const getAttendanceRoute = require('./routes/StudentRoutes/getAttendance');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -39,6 +40,7 @@ app.use('/api/teacher/startSession', teacherStartSession);
 app.use('/api/teacher/endSession', teacherEndSession);
 app.use('/api/admin/createClass', adminCreateClass);
 app.use('/api/admin/editClass', adminEditClass); 
+app.use('/api/student/getAttendance', getAttendanceRoute);
 
 // Connect to MongoDB
 const PORT = process.env.PORT || 5000;

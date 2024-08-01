@@ -21,6 +21,11 @@ const userSchema = new Schema({
         type: String,
         enum: ['teacher', 'student', 'admin'],
         required: true
+    },
+    publickey: {
+        type: String,
+        required: true
+
     }
 }, { timestamps: true });
 
