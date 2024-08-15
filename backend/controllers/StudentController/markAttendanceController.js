@@ -1,6 +1,8 @@
 const { validationResult } = require('express-validator');
 const AttendanceRecord = require('../../models/attendanceRecord');
 const { storeAttendanceRecord } = require('../../services/solanaService');
+const Wallet = require('../../models/wallet');
+const anchor = require('@project-serum/anchor');
 
 exports.markAttendance = async (req, res) => {
   const errors = validationResult(req);
@@ -12,6 +14,16 @@ exports.markAttendance = async (req, res) => {
   const studentId = req.user.id; // Assuming student is marking their own attendance
 
   try {
+    // Retrieve the student's wallet
+    const studentWallet = await Wallet.findOne({ email: req.user.email });
+    if (!studentWallet) {
+      return res.status(404).json({ msg: 'Student wallet not found' });
+    }
+
+    // Load the student's keypair
+    const secretKey = Uint8Array.from(studentWallet.secretKey);
+    const studentKeypair = anchor.web3.Keypair.fromSecretKey(secretKey);
+
     const attendanceRecord = await AttendanceRecord.findOne({ session: sessionId, student: studentId });
     if (!attendanceRecord) {
       return res.status(404).json({ msg: 'Attendance record not found' });
@@ -20,10 +32,10 @@ exports.markAttendance = async (req, res) => {
     attendanceRecord.isPresent = true;
     await attendanceRecord.save();
 
-    // Submit attendance to Solana blockchain
-    await storeAttendanceRecord(studentId, sessionId, true);
+    // Submit attendance to Solana blockchain using the student's wallet
+    const publicKey = await storeAttendanceRecord(studentId, sessionId, true, studentKeypair);
 
-    res.status(200).json({ msg: 'Attendance marked successfully and submitted to blockchain', attendanceRecord });
+    res.status(200).json({ msg: 'Attendance marked successfully and submitted to blockchain', attendanceRecord, publicKey });
   } catch (err) {
     console.error('Error marking attendance:', err.message);
     res.status(500).send('Server error');
