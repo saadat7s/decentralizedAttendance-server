@@ -2,11 +2,13 @@ import {React , useState} from 'react';
 import { Container, Grid, TextField, Button, Typography, Link } from '@mui/material';
 import './SignupPage'
 import SiginUpPage from './SignupPage';
+import { useNavigate } from 'react-router-dom';
 
 function LoginPage() { 
     const [tab,setTab]  = useState("Login")
+    const navigate = useNavigate();
     return (
-    tab=='Login'  ?     <Container maxWidth={false} disableGutters className="container">
+    tab=='Login' ? <Container maxWidth={false} disableGutters className="container">
       <Grid container spacing={0} className="grid-container">
         <Grid item xs={12} md={6} className="right-container">
           <div className="form-container">
@@ -23,7 +25,7 @@ function LoginPage() {
             <Grid container spacing={2} className="button-container" sx={{marginTop:5}}>
               <Grid item xs={6}>
                 <Button onClick={()=>{
-
+                      navigate('/AttendanceList');
                 }} variant="contained" color="primary" fullWidth className="login-button">
                   Login
                 </Button>
