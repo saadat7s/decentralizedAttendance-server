@@ -17,8 +17,7 @@ const studentMarkAttendance = require('./routes/StudentRoutes/markAttendance');
 const teacherSelectClass = require('./routes/TeacherRoutes/selectClass');
 const teacherStartSession = require('./routes/TeacherRoutes/startSession');
 const teacherEndSession = require('./routes/TeacherRoutes/endSession');
-const adminCreateClass = require('./routes/AdminRoutes/createClass');
-const adminEditClass = require('./routes/AdminRoutes/editClass'); 
+const adminRoutes = require('./routes/AdminRoutes/adminRoutes');
 const getAttendanceRoute = require('./routes/StudentRoutes/getAttendance');
 
 // Load environment variables from .env file
@@ -41,8 +40,7 @@ app.use('/api/student/markAttendance', studentMarkAttendance);
 app.use('/api/teacher/selectClass', teacherSelectClass);
 app.use('/api/teacher/startSession', teacherStartSession);
 app.use('/api/teacher/endSession', teacherEndSession);
-app.use('/api/admin/createClass', adminCreateClass);
-app.use('/api/admin/editClass', adminEditClass); 
+app.use('/api/admin', adminRoutes);
 app.use('/api/student/getAttendance', getAttendanceRoute);
 
 // Connect to MongoDB

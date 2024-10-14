@@ -1,3 +1,5 @@
+// Make it read-only, A student only see the status of their presence
+
 const { validationResult } = require('express-validator');
 const AttendanceRecord = require('../../models/attendanceRecord');
 const { storeAttendanceRecord } = require('../../services/solanaService');
