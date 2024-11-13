@@ -10,15 +10,11 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger.json');
 
 // Import routes
-const authRoutes = require('./routes/AuthRoutes/registerUser');
 const loginRoutes = require('./routes/AuthRoutes/loginUser');
 const profileRoute = require('./routes/profile');
-const studentMarkAttendance = require('./routes/StudentRoutes/markAttendance');
-const teacherSelectClass = require('./routes/TeacherRoutes/selectClass');
-const teacherStartSession = require('./routes/TeacherRoutes/startSession');
-const teacherEndSession = require('./routes/TeacherRoutes/endSession');
+const teacherRoutes = require('./routes/TeacherRoutes/teacherRoutes')
 const adminRoutes = require('./routes/AdminRoutes/adminRoutes');
-const getAttendanceRoute = require('./routes/StudentRoutes/getAttendance');
+const studentRoutes = require('./routes/StudentRoutes/studentRoutes')
 
 // Load environment variables from .env file
 dotenv.config();
@@ -33,15 +29,11 @@ app.use(morgan('dev'));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Use routes
-app.use('/api/auth/register', authRoutes);
 app.use('/api/auth/login', loginRoutes);
 app.use('/api/profile', profileRoute);
-app.use('/api/student/markAttendance', studentMarkAttendance);
-app.use('/api/teacher/selectClass', teacherSelectClass);
-app.use('/api/teacher/startSession', teacherStartSession);
-app.use('/api/teacher/endSession', teacherEndSession);
 app.use('/api/admin', adminRoutes);
-app.use('/api/student/getAttendance', getAttendanceRoute);
+app.use('/api/student', studentRoutes);
+app.use('/api/teacher', teacherRoutes);
 
 // Connect to MongoDB
 const PORT = process.env.PORT || 5000;

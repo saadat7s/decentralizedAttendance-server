@@ -53,15 +53,15 @@ router.post(
 );
 
 // Retrieve List of Teachers
-router.get('/teachers', adminAuth, adminUserController.getAllTeachers);
+router.get('/getAllTeachers', adminAuth, adminUserController.getAllTeachers);
 
 // Retrieve List of Students
-router.get('/students', adminAuth, adminUserController.getAllStudents);
+router.get('/getAllStudents', adminAuth, adminUserController.getAllStudents);
 
 // Retrieve Information for a Specific Teacher
-router.get('/teacher/:id', adminAuth, adminUserController.getTeacherById);
+router.get('/getTeacherById/:id', adminAuth, adminUserController.getTeacherById);
 
 // Retrieve Information for a Specific Student
-router.get('/student/:id', adminAuth, adminUserController.getStudentById);
+router.get('/getStudentById/:id', adminAuth, adminUserController.getStudentById);
 
 module.exports = router;
