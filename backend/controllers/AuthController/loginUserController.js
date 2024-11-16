@@ -13,19 +13,24 @@ exports.loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // Check if user exists
+        // Step 1: Check if user exists
         let user = await User.findOne({ email });
         if (!user) {
             return res.status(400).json({ msg: 'Invalid credentials' });
         }
 
-        // Check if password matches
+        // Step 2: Validate password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(400).json({ msg: 'Invalid credentials' });
         }
 
-        // Create and return JWT token
+        // Step 3: Role-based validation
+        if (user.role !== 'student' && user.role !== 'teacher' && user.role !== 'admin') {
+            return res.status(403).json({ msg: 'Unauthorized role' });
+        }
+
+        // Step 4: Create and return JWT token
         const payload = {
             user: {
                 id: user.id,
@@ -36,7 +41,14 @@ exports.loginUser = async (req, res) => {
 
         jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' }, (err, token) => {
             if (err) throw err;
-            res.json({ token, publickey: user.publicKey });
+
+            // Respond with token and public key
+            res.json({
+                msg: `Login successful for ${user.role}`,
+                role: user.role,
+                token,
+                publicKey: user.publicKey
+            });
         });
     } catch (err) {
         console.error(err.message);

@@ -30,6 +30,10 @@ const sessionSchema = new Schema({
     isCompleted: {
         type: Boolean,
         default: false
+    }, 
+    isFinalized: { // New field to track finalization
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true });
 

@@ -25,6 +25,9 @@ const attendanceRecordSchema = new Schema({
     markedAt: {
         type: Date,
         default: Date.now
+    }, isFinalized: { // New field to lock attendance records
+        type: Boolean,
+        default: false
     }
 });
 

@@ -17,9 +17,9 @@ router.post(
     endSession
 );
 
-// Mark attendance route
+// Finalize attendance route
 router.post(
-    '/markAttendance',
+    '/finalizeAttendance',
     [
         check('sessionId', 'Session ID is required').not().isEmpty(),
         check('studentId', 'Student ID is required').not().isEmpty()

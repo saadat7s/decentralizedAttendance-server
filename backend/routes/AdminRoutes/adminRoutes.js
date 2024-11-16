@@ -52,6 +52,20 @@ router.post(
   adminUserController.createAndAssignClass
 );
 
+// Edit Class
+router.put(
+  '/editClass',
+  [
+      check('classId', 'Class ID is required').not().isEmpty(),
+      check('courseName', 'Course Name is required').optional().not().isEmpty(),
+      check('courseId', 'Course ID is required').optional().not().isEmpty(),
+      check('teacherId', 'Teacher ID must be a valid ID').optional().isMongoId(),
+      check('studentIds', 'Student IDs must be an array').optional().isArray()
+  ],
+  adminAuth,
+  adminUserController.editClass
+);
+
 // Retrieve List of Teachers
 router.get('/getAllTeachers', adminAuth, adminUserController.getAllTeachers);
 
