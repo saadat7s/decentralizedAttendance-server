@@ -4,7 +4,8 @@
 const express = require('express');
 const { getAttendance, markAttendance } = require('../../controllers/StudentController/studentController');
 const { check } = require('express-validator');
-const auth = require('../../middlewares/authMiddleware');
+const { isAuth } = require('../../middlewares/authMiddleware');
+
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ router.post(
   [
     check('sessionId', 'Session ID is required').not().isEmpty()
   ],
-  auth,
+  isAuth,
   markAttendance
 );
 

@@ -2,8 +2,8 @@
 
 const express = require('express');
 const { check } = require('express-validator');
-const auth = require('../../middlewares/authMiddleware');
-const { startSession, selectClass, markAttendance, endSession  } = require('../../controllers/TeacherController/teacherController');
+const { startSession, selectClass, markAttendance, endSession } = require('../../controllers/TeacherController/teacherController');
+const { isAuth } = require('../../middlewares/authMiddleware');
 
 const router = express.Router();
 
@@ -13,7 +13,7 @@ router.post(
     [
         check('sessionId', 'Session ID is required').not().isEmpty()
     ],
-    auth,
+    isAuth,
     endSession
 );
 
@@ -24,12 +24,12 @@ router.post(
         check('sessionId', 'Session ID is required').not().isEmpty(),
         check('studentId', 'Student ID is required').not().isEmpty()
     ],
-    auth,
+    isAuth,
     markAttendance
 );
 
 // Select class route
-router.get('/selectClass', auth, selectClass);
+router.get('/selectClass', isAuth, selectClass);
 
 // Start session route
 router.post(
@@ -40,7 +40,7 @@ router.post(
         check('endTime', 'End time is required').not().isEmpty(),
         check('classId', 'Class ID is required').not().isEmpty()
     ],
-    auth,
+    isAuth,
     startSession
 );
 

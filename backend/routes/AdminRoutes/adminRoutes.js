@@ -2,8 +2,8 @@
 
 const express = require('express');
 const { check } = require('express-validator');
-const adminAuth = require('../../middlewares/adminAuthMiddleware');
 const adminUserController = require('../../controllers/AdminController/adminUserController');
+const { isAuth } = require('../../middlewares/authMiddleware');
 
 const router = express.Router();
 
@@ -17,7 +17,7 @@ router.post(
     check('faculty', 'Faculty is required').not().isEmpty(),
     check('designation', 'Designation is required').not().isEmpty()
   ],
-  adminAuth,
+  isAuth,
   adminUserController.registerTeacher
 );
 
@@ -35,7 +35,7 @@ router.post(
     check('admissionYear', 'Admission year is required').isInt(),
     check('batch', 'Batch is required').not().isEmpty()
   ],
-  adminAuth,
+  isAuth,
   adminUserController.registerStudent
 );
 
@@ -48,7 +48,7 @@ router.post(
     check('teacherId', 'Teacher ID is required').not().isEmpty(),
     check('studentIds', 'Student IDs are required and should be an array').isArray().not().isEmpty()
   ],
-  adminAuth,
+  isAuth,
   adminUserController.createAndAssignClass
 );
 
@@ -56,26 +56,26 @@ router.post(
 router.put(
   '/editClass',
   [
-      check('classId', 'Class ID is required').not().isEmpty(),
-      check('courseName', 'Course Name is required').optional().not().isEmpty(),
-      check('courseId', 'Course ID is required').optional().not().isEmpty(),
-      check('teacherId', 'Teacher ID must be a valid ID').optional().isMongoId(),
-      check('studentIds', 'Student IDs must be an array').optional().isArray()
+    check('classId', 'Class ID is required').not().isEmpty(),
+    check('courseName', 'Course Name is required').optional().not().isEmpty(),
+    check('courseId', 'Course ID is required').optional().not().isEmpty(),
+    check('teacherId', 'Teacher ID must be a valid ID').optional().isMongoId(),
+    check('studentIds', 'Student IDs must be an array').optional().isArray()
   ],
-  adminAuth,
+  isAuth,
   adminUserController.editClass
 );
 
 // Retrieve List of Teachers
-router.get('/getAllTeachers', adminAuth, adminUserController.getAllTeachers);
+router.get('/getAllTeachers', isAuth, adminUserController.getAllTeachers);
 
 // Retrieve List of Students
-router.get('/getAllStudents', adminAuth, adminUserController.getAllStudents);
+router.get('/getAllStudents', isAuth, adminUserController.getAllStudents);
 
 // Retrieve Information for a Specific Teacher
-router.get('/getTeacherById/:id', adminAuth, adminUserController.getTeacherById);
+router.get('/getTeacherById/:id', isAuth, adminUserController.getTeacherById);
 
 // Retrieve Information for a Specific Student
-router.get('/getStudentById/:id', adminAuth, adminUserController.getStudentById);
+router.get('/getStudentById/:id', isAuth, adminUserController.getStudentById);
 
 module.exports = router;

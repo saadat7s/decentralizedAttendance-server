@@ -22,7 +22,7 @@ exports.registerTeacher = async (req, res) => {
         // Check if user already exists
         let user = await User.findOne({ email });
         if (user) {
-            return res.status(400).json({ msg: 'User already exists' });
+            return res.status(400).json({ message: 'User already exists' });
         }
 
         // Create new Solana wallet
@@ -62,10 +62,10 @@ exports.registerTeacher = async (req, res) => {
         await teacher.save();
 
         // Include credentials in response
-        res.status(201).json({ 
-            msg: 'Teacher registered successfully', 
-            teacher, 
-            credentials: { email, password } 
+        res.status(201).json({
+            message: 'Teacher registered successfully',
+            teacher,
+            credentials: { email, password }
         });
     } catch (err) {
         console.error('Error in registering teacher:', err.message);
@@ -87,11 +87,11 @@ exports.registerStudent = async (req, res) => {
         // Check if user already exists
         let user = await User.findOne({ email });
         if (user) {
-            return res.status(400).json({ msg: 'User already exists' });
+            return res.status(400).json({ message: 'User already exists' });
         }
         let existingWallet = await Wallet.findOne({ email });
         if (existingWallet) {
-            return res.status(400).json({ msg: 'Wallet already exists for this email' });
+            return res.status(400).json({ message: 'Wallet already exists for this email' });
         }
 
         // Create new Solana wallet
@@ -134,10 +134,10 @@ exports.registerStudent = async (req, res) => {
         await student.save();
 
         // Include credentials in response
-        res.status(201).json({ 
-            msg: 'Student registered successfully', 
-            student, 
-            credentials: { email, password } 
+        res.status(201).json({
+            message: 'Student registered successfully',
+            student,
+            credentials: { email, password }
         });
     } catch (err) {
         console.error('Error in registering student:', err.message);
@@ -163,19 +163,19 @@ exports.createAndAssignClass = async (req, res) => {
         // Step 1: Validate teacher exists and is authorized to be assigned
         const teacher = await Teacher.findOne({ user: teacherId });
         if (!teacher) {
-            return res.status(404).json({ msg: 'Teacher not found' });
+            return res.status(404).json({ message: 'Teacher not found' });
         }
 
         // Step 2: Check for existing class with the same course ID
         const existingClass = await Class.findOne({ courseId });
         if (existingClass) {
-            return res.status(400).json({ msg: 'Class with this Course ID already exists' });
+            return res.status(400).json({ message: 'Class with this Course ID already exists' });
         }
 
         // Step 3: Validate student IDs and ensure they exist
         const students = await Student.find({ user: { $in: studentIds } });
         if (students.length !== studentIds.length) {
-            return res.status(400).json({ msg: 'Some student IDs are invalid or do not exist' });
+            return res.status(400).json({ message: 'Some student IDs are invalid or do not exist' });
         }
 
         // Step 4: Create the class
@@ -202,7 +202,7 @@ exports.createAndAssignClass = async (req, res) => {
         });
 
         res.status(201).json({
-            msg: 'Class created and assigned successfully',
+            message: 'Class created and assigned successfully',
             class: newClass
         });
     } catch (err) {
@@ -226,14 +226,14 @@ exports.editClass = async (req, res) => {
         // Step 1: Retrieve the existing class
         const existingClass = await Class.findById(classId);
         if (!existingClass) {
-            return res.status(404).json({ msg: 'Class not found' });
+            return res.status(404).json({ message: 'Class not found' });
         }
 
         // Step 2: Validate and update the teacher if provided
         if (teacherId) {
             const teacher = await Teacher.findOne({ user: teacherId });
             if (!teacher) {
-                return res.status(404).json({ msg: 'Teacher not found' });
+                return res.status(404).json({ message: 'Teacher not found' });
             }
             existingClass.teacher = teacher.user;
         }
@@ -242,7 +242,7 @@ exports.editClass = async (req, res) => {
         if (studentIds && studentIds.length > 0) {
             const students = await Student.find({ user: { $in: studentIds } });
             if (students.length !== studentIds.length) {
-                return res.status(400).json({ msg: 'Some student IDs are invalid or do not exist' });
+                return res.status(400).json({ message: 'Some student IDs are invalid or do not exist' });
             }
             existingClass.students = studentIds;
         }
@@ -253,7 +253,7 @@ exports.editClass = async (req, res) => {
             // Ensure no other class has the same courseId
             const duplicateClass = await Class.findOne({ courseId });
             if (duplicateClass && duplicateClass.id !== classId) {
-                return res.status(400).json({ msg: 'Another class already uses this Course ID' });
+                return res.status(400).json({ message: 'Another class already uses this Course ID' });
             }
             existingClass.courseId = courseId;
         }
@@ -276,7 +276,7 @@ exports.editClass = async (req, res) => {
         });
 
         res.status(200).json({
-            msg: 'Class updated successfully',
+            message: 'Class updated successfully',
             class: existingClass
         });
     } catch (err) {
@@ -290,7 +290,7 @@ exports.editClass = async (req, res) => {
 exports.getAllTeachers = async (req, res) => {
     try {
         const teachers = await Teacher.find().populate('user', ['name', 'email', 'publicKey']);
-        res.status(200).json(teachers);
+        res.status(200).json({ message: "All teachers fetched", teachers });
     } catch (err) {
         console.error('Error in retrieving teachers:', err.message);
         res.status(500).send('Server error');
@@ -301,7 +301,7 @@ exports.getAllTeachers = async (req, res) => {
 exports.getAllStudents = async (req, res) => {
     try {
         const students = await Student.find().populate('user', ['name', 'email', 'publicKey']);
-        res.status(200).json(students);
+        res.status(200).json({ message: 'All students fetched.', students });
     } catch (err) {
         console.error('Error in retrieving students:', err.message);
         res.status(500).send('Server error');
@@ -313,7 +313,7 @@ exports.getTeacherById = async (req, res) => {
     try {
         const teacher = await Teacher.findOne({ user: req.params.id }).populate('user', ['name', 'email', 'publicKey']);
         if (!teacher) {
-            return res.status(404).json({ msg: 'Teacher not found' });
+            return res.status(404).json({ message: 'Teacher not found' });
         }
         res.status(200).json(teacher);
     } catch (err) {
@@ -327,7 +327,7 @@ exports.getStudentById = async (req, res) => {
     try {
         const student = await Student.findOne({ user: req.params.id }).populate('user', ['name', 'email', 'publicKey']);
         if (!student) {
-            return res.status(404).json({ msg: 'Student not found' });
+            return res.status(404).json({ message: 'Student not found' });
         }
         res.status(200).json(student);
     } catch (err) {

@@ -1,8 +1,8 @@
 // routes/AuthRoutes/loginUser.js
-
 const express = require('express');
 const { check } = require('express-validator');
-const { loginUser } = require('../../controllers/AuthController/loginUserController');
+const { loginUser, getUserProfile, userLogout } = require('../../controllers/AuthController/loginUserController');
+const { isAuth } = require('../../middlewares/authMiddleware');
 
 const router = express.Router();
 
@@ -14,5 +14,8 @@ router.post(
     ],
     loginUser
 );
+
+router.get('/user-profile', isAuth, getUserProfile)
+router.get('/logout', userLogout)
 
 module.exports = router;
