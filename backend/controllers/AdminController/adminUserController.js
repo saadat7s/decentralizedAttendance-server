@@ -8,6 +8,8 @@ const Class = require('../../models/class');
 const Wallet = require('../../models/wallet');
 const { Keypair } = require('@solana/web3.js');
 const { validationResult } = require('express-validator');
+const _class = require('../../models/class');
+const user = require('../../models/user');
 
 // Register a Teacher
 exports.registerTeacher = async (req, res) => {
@@ -161,10 +163,11 @@ exports.createAndAssignClass = async (req, res) => {
 
     try {
         // Step 1: Validate teacher exists and is authorized to be assigned
-        const teacher = await Teacher.findOne({ user: teacherId });
+        const teacher = await Teacher.findOne({ user: teacherId }).populate('user', 'name');
         if (!teacher) {
             return res.status(404).json({ message: 'Teacher not found' });
         }
+        const teacherName = teacher.user.name;
 
         // Step 2: Check for existing class with the same course ID
         const existingClass = await Class.findOne({ courseId });
@@ -173,26 +176,30 @@ exports.createAndAssignClass = async (req, res) => {
         }
 
         // Step 3: Validate student IDs and ensure they exist
-        const students = await Student.find({ user: { $in: studentIds } });
+        const students = await Student.find({ user: { $in: studentIds } }).populate('user', 'name');
+
         if (students.length !== studentIds.length) {
             return res.status(400).json({ message: 'Some student IDs are invalid or do not exist' });
         }
+
+        // Extract student names using Promise.all for efficiency
+        const studentNames = students.map(student => student.user.name);
 
         // Step 4: Create the class
         const newClass = new Class({
             courseName,
             courseId,
-            teacher: teacher.user,
-            students: studentIds
+            teacher: {
+                id: teacherId,
+                name: teacherName,
+            },
+            students: studentNames,
         });
         await newClass.save();
 
         // Step 5: Notify the teacher
-        const teacherUser = await User.findById(teacher.user);
-        if (teacherUser) {
-            console.log(`Notification: Class ${courseName} assigned to teacher ${teacherUser.name}`);
-            // Integration: Replace this with an actual email or notification service
-        }
+        console.log(`Notification: Class ${courseName} assigned to teacher ${teacherName}`);
+        // Integration: Replace this with an actual email or notification service
 
         // Step 6: Notify the students
         const studentUsers = await User.find({ _id: { $in: studentIds } });
@@ -201,13 +208,15 @@ exports.createAndAssignClass = async (req, res) => {
             // Integration: Replace this with an actual email or notification service
         });
 
+        // Step 7: Respond with success
         res.status(201).json({
             message: 'Class created and assigned successfully',
-            class: newClass
+            class: newClass,
         });
+
     } catch (err) {
         console.error('Error in creating and assigning class:', err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ message: 'Server error', error: err.message });
     }
 };
 
@@ -335,3 +344,15 @@ exports.getStudentById = async (req, res) => {
         res.status(500).send('Server error');
     }
 };
+
+exports.getAllClasses = async (req, res) => {
+    try {
+        const classes = await _class.find({});
+        if (classes) {
+            return res.status(200).json({ message: "All classes fetched.", classes });
+        }
+        return res.status(401).json({ message: 'No classes found.' })
+    } catch (error) {
+        return res.status(500).json({ message: 'Internal Server Error.', error })
+    }
+}

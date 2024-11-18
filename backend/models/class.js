@@ -14,16 +14,18 @@ const classSchema = new Schema({
         unique: true
     },
     teacher: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    students: [
-        {
+        id: {
             type: Schema.Types.ObjectId,
-            ref: 'User'
+            ref: 'User',
+            required: true
+        },
+        name: {
+            type: String,
+            required: true,
+            default: ''
         }
-    ]
+    },
+    students: []
 }, { timestamps: true });
 
 module.exports = mongoose.model('Class', classSchema);

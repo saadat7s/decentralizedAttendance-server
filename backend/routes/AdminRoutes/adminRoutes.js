@@ -78,4 +78,6 @@ router.get('/getTeacherById/:id', isAuth, adminUserController.getTeacherById);
 // Retrieve Information for a Specific Student
 router.get('/getStudentById/:id', isAuth, adminUserController.getStudentById);
 
+router.get('/get-all-classes', isAuth, adminUserController.getAllClasses)
+
 module.exports = router;
