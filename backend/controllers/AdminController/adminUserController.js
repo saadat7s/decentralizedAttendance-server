@@ -168,6 +168,8 @@ exports.createAndAssignClass = async (req, res) => {
             return res.status(404).json({ message: 'Teacher not found' });
         }
         const teacherName = teacher.user.name;
+        teacher.courses.push(courseName);
+        await teacher.save()
 
         // Step 2: Check for existing class with the same course ID
         const existingClass = await Class.findOne({ courseId });
