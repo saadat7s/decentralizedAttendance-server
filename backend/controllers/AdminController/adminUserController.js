@@ -10,6 +10,7 @@ const { Keypair } = require('@solana/web3.js');
 const { validationResult } = require('express-validator');
 const _class = require('../../models/class');
 const user = require('../../models/user');
+const Session = require('../../models/session');
 
 // Register a Teacher
 exports.registerTeacher = async (req, res) => {
@@ -293,6 +294,71 @@ exports.editClass = async (req, res) => {
     } catch (err) {
         console.error('Error in editing class:', err.message);
         res.status(500).send('Server error');
+    }
+};
+
+// Create a session for a class
+exports.createSession = async (req, res) => {
+    const { classId, name, date, startTime, endTime } = req.body;
+
+    try {
+        // Validate required fields
+        if (!classId || !name || !date || !startTime || !endTime) {
+            return res.status(400).json({ message: 'All fields are required.' });
+        }
+
+        // Check if the class exists
+        const classExists = await Class.findById(classId);
+        if (!classExists) {
+            return res.status(404).json({ message: 'Class not found.' });
+        }
+
+        // Create the session
+        const newSession = new Session({
+            classId,
+            name,
+            date,
+            startTime,
+            endTime,
+            createdBy: req.user.id, // Assuming req.user contains the logged-in admin info
+        });
+
+        // Save to database
+        await newSession.save();
+
+        // Respond to the client
+        res.status(201).json({ message: 'Session created successfully', session: newSession });
+    } catch (error) {
+        console.error('Error creating session:', error);
+        res.status(500).json({ message: 'Server error. Please try again later.' });
+    }
+};
+
+// Get all sessions
+exports.getAllSessions = async (req, res) => {
+    try {
+        // Fetch all sessions and populate class details
+        const sessions = await Session.find().populate('classId', 'courseName');
+
+        // Check if there are sessions
+        if (!sessions.length) {
+            return res.status(200).json({ sessions: [] }); // Return an empty array for frontend
+        }
+
+        // Format the data to match frontend table structure
+        const formattedSessions = sessions.map((session, index) => ({
+            number: index + 1,
+            className: session.classId?.courseName || 'N/A', // Use courseName from populated classId
+            sessionName: session.name,
+            date: session.date,
+            startTime: session.startTime,
+            endTime: session.endTime,
+        }));
+
+        res.status(200).json({ sessions: formattedSessions });
+    } catch (error) {
+        console.error('Error fetching sessions:', error);
+        res.status(500).json({ message: 'Server error. Please try again later.' });
     }
 };
 

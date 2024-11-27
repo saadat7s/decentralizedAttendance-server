@@ -66,6 +66,23 @@ router.put(
   adminUserController.editClass
 );
 
+// Create Session Route
+router.post(
+  '/create-session',
+  [
+      check('classId', 'Class ID is required').notEmpty(),
+      check('name', 'Session name is required').notEmpty(),
+      check('date', 'Session date is required').isISO8601(),
+      check('startTime', 'Start time is required').notEmpty(),
+      check('endTime', 'End time is required').notEmpty(),
+  ],
+  isAuth,
+  adminUserController.createSession
+);
+
+// Route to get all sessions
+router.get('/get-all-sessions', isAuth, adminUserController.getAllSessions);
+
 // Retrieve List of Teachers
 router.get('/getAllTeachers', isAuth, adminUserController.getAllTeachers);
 
