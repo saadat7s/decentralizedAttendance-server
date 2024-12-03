@@ -24,16 +24,4 @@ router.post('/start-session-upon-selection/:sessionId', isAuth, startSessionById
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 module.exports = router;
