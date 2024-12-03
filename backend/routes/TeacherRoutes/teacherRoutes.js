@@ -2,18 +2,25 @@
 
 const express = require('express');
 const { check } = require('express-validator');
-const { getAssignedClasses } = require('../../controllers/TeacherController/teacherController');
+const { getAssignedClasses, getStudentsByClass, getSessionByClass, startSessionById } = require('../../controllers/TeacherController/teacherController');
 const { isAuth } = require('../../middlewares/authMiddleware');
+const { startSession } = require('../../models/session');
 
 const router = express.Router();
 
 
 
-// Select class route
+// getAssignedClasses
 router.get('/get-assigned-classes', isAuth, getAssignedClasses);
 
+// getStudentsByClass
+router.get('/get-students-by-class/:classId', isAuth, getStudentsByClass);
 
+// getSessionsByClass
+router.get('/get-sessions-by-class/:classId', isAuth, getSessionByClass);
 
+// start session automatically
+router.post('/start-session-upon-selection/:sessionId', isAuth, startSessionById);
 
 
 
