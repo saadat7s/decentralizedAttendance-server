@@ -2,7 +2,7 @@
 
 
 const express = require('express');
-const { getAttendance, markAttendance } = require('../../controllers/StudentController/studentController');
+const { getAttendance, markAttendance, getStudentClasses } = require('../../controllers/StudentController/studentController');
 const { check } = require('express-validator');
 const { isAuth } = require('../../middlewares/authMiddleware');
 
@@ -19,5 +19,7 @@ router.post(
   isAuth,
   markAttendance
 );
+
+router.get('/classes', isAuth, getStudentClasses)
 
 module.exports = router;

@@ -11,6 +11,7 @@ const { validationResult } = require('express-validator');
 const _class = require('../../models/class');
 const user = require('../../models/user');
 const Session = require('../../models/session');
+const student = require('../../models/student');
 
 // Register a Teacher
 exports.registerTeacher = async (req, res) => {
@@ -179,7 +180,7 @@ exports.createAndAssignClass = async (req, res) => {
         }
 
         // Step 3: Validate student IDs and ensure they exist
-        const students = await Student.find({ user: { $in: studentIds } }).populate('user', 'name');
+        const students = await student.find({ user: { $in: studentIds } }).populate('user', 'name');
 
         if (students.length !== studentIds.length) {
             return res.status(400).json({ message: 'Some student IDs are invalid or do not exist' });
@@ -204,12 +205,14 @@ exports.createAndAssignClass = async (req, res) => {
         console.log(`Notification: Class ${courseName} assigned to teacher ${teacherName}`);
         // Integration: Replace this with an actual email or notification service
 
-        // Step 6: Notify the students
-        const studentUsers = await User.find({ _id: { $in: studentIds } });
-        studentUsers.forEach(student => {
+        //Pushing courses to student document
+        const studentUsers = await student.find({ user: { $in: studentIds } });
+
+        for (const student of studentUsers) {
+            student.courses.push(courseName);
             console.log(`Notification: Student ${student.name} added to class ${courseName}`);
-            // Integration: Replace this with an actual email or notification service
-        });
+            await student.save();
+        }
 
         // Step 7: Respond with success
         res.status(201).json({
