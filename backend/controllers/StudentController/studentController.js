@@ -70,10 +70,11 @@ exports.getStudentClasses = async (req, res) => {
     try {
       const user = await student.findOne({ user: id })
       if (user) {
-        const studentClasses = []
-        for (const course of user.courses) {
-          await studentClasses.push(await _class.find({ courseName: course }));
-        }
+        let studentClasses = await _class.find({ courseName: user.courses })
+        // for (const course of user.courses) {
+        //   studentClasses.push(
+        //   );
+        // }
 
         return res.status(200).json({ message: "Student classes fetched.", studentClasses });
       }
