@@ -8,6 +8,8 @@ const User = require('../../models/user');
 const AttendanceRecord = require('../../models/attendanceRecord');
 const { validationResult } = require('express-validator');
 const session = require('../../models/session');
+const student = require('../../models/student');
+const { default: mongoose } = require('mongoose');
 
 
 // Get list of classes assigned to the logged-in teacher
@@ -20,7 +22,7 @@ exports.getAssignedClasses = async (req, res) => {
         if (!teacher) {
             return res.status(404).json({ message: 'Teacher not found' });
         }
-        
+
         // Find the classes assigned to the teacher
         const classes = await Class.find({ 'teacher.id': req.user.id });
 
@@ -102,21 +104,21 @@ exports.getStudentsByClass = async (req, res) => {
 
 // get session by class
 
-exports.getSessionByClass = async (req, res) =>{
+exports.getSessionByClass = async (req, res) => {
 
     // getting classId from the req object
-    const {classId} = req.params;
+    const { classId } = req.params;
 
     try {
         // finding session based on the class Id
-        const sessions = await Session.find({classId});
+        const sessions = await Session.find({ classId });
 
         // if no sessions
-        if(sessions.length === 0){
-            return res.status(404).json({message: "No sessions found for this class"});
+        if (sessions.length === 0) {
+            return res.status(404).json({ message: "No sessions found for this class" });
         }
 
-        // mapping the sessions 
+        // mapping the sessions
         const mappedSessions = sessions.map(session => ({
             id: session._id.toString(),
             sessionName: session.name,
@@ -132,8 +134,8 @@ exports.getSessionByClass = async (req, res) =>{
 
     } catch (error) {
         console.error("fetching session errored", error);
-        return res.status(500).json({message: "Unable to load sessions"});
-        
+        return res.status(500).json({ message: "Unable to load sessions" });
+
     }
 
 
@@ -142,18 +144,44 @@ exports.getSessionByClass = async (req, res) =>{
 
 // start a session upon session selection
 exports.startSessionById = async (req, res) => {
-    
-    const {sessionId} = req.params;
+
+    const { sessionId } = req.params;
 
     try {
-        const session = await Session.findById(sessionId);
+        let session = await Session.findById(sessionId);
         if (!session) {
             return res.status(404).json({ message: 'Session not found' });
         }
 
-         // Check if the session has already started
+        // Check if the session has already started
         if (session.isStarted) {
-            return res.status(400).json({ message: 'Session already started' });
+            session = await Session.aggregate([
+                {
+                    $match: {
+                        _id: new mongoose.Types.ObjectId(sessionId)
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'attendancerecords',
+                        localField: '_id',
+                        foreignField: 'session',
+                        as: 'attendance'
+                    }
+                },
+                {
+                    $addFields: {
+                        attendance: {
+                            $map: {
+                                input: '$attendance',
+                                as: 'attendanceIds',
+                                in: '$$attendanceIds.student',
+                            }
+                        }
+                    }
+                }
+            ])
+            return res.status(200).json({ message: 'Session already started', session: session[0] });
         }
         // update the isStarted field
         session.isStarted = true;
@@ -163,21 +191,42 @@ exports.startSessionById = async (req, res) => {
         await session.save();
 
         res.status(200).json(
-            {   
+            {
                 message: "Session has started successfully upon selecting session",
                 session: {
                     id: session._id.toString(),
                     sessionName: session.name,
-                    startTime: session.startTime,
                     isStarted: session.isStarted,
 
                 }
             });
-         }
-         catch (error) {
-            console.error('Error starting session', error);
-            res.status(500).json({ message: 'Unable to start session. Please try again.' });
+    }
+    catch (error) {
+        console.error('Error starting session', error);
+        res.status(500).json({ message: 'Unable to start session. Please try again.' });
+    }
+
+};
+
+
+exports.finalizeAttendance = async (req, res) => {
+    const { students, } = req.body;
+
+    if (students && students.length > 0) {
+        try {
+            //Finalizing attendance in db for each student
+            for (std of students) {
+                const currentStudentAttendance = await AttendanceRecord.findOne({ student: std._id });
+
+                //Todo: Push to blockchain
+
+                currentStudentAttendance.isFinalized = true;
+                currentStudentAttendance.isPresent = std.isPresent;
+
+                await currentStudentAttendance.save();
+            }
+        } catch (error) {
+
         }
-        
-    };
-        
+    }
+}

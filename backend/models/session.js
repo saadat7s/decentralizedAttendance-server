@@ -7,9 +7,7 @@ const sessionSchema = new mongoose.Schema({
     classId: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', required: true },
     name: { type: String, required: true },
     date: { type: Date, required: true },
-    startTime: { type: String, default: "" },
-    endTime: { type: String, default: "" },
-    isStarted: {  
+    isStarted: {
         type: Boolean,
         default: false,
     },

@@ -302,11 +302,11 @@ exports.editClass = async (req, res) => {
 
 // Create a session for a class
 exports.createSession = async (req, res) => {
-    const { classId, name, date, startTime, endTime } = req.body;
+    const { classId, name, dateTime } = req.body;
 
     try {
         // Validate required fields
-        if (!classId || !name || !date || !startTime || !endTime) {
+        if (!classId || !name || !dateTime) {
             return res.status(400).json({ message: 'All fields are required.' });
         }
 
@@ -316,13 +316,12 @@ exports.createSession = async (req, res) => {
             return res.status(404).json({ message: 'Class not found.' });
         }
 
+
         // Create the session
         const newSession = new Session({
             classId,
             name,
-            date,
-            startTime,
-            endTime,
+            date: dateTime,
             createdBy: req.user.id, // Assuming req.user contains the logged-in admin info
         });
 
@@ -341,24 +340,14 @@ exports.createSession = async (req, res) => {
 exports.getAllSessions = async (req, res) => {
     try {
         // Fetch all sessions and populate class details
-        const sessions = await Session.find().populate('classId', 'courseName');
+        const sessions = await Session.find();
 
         // Check if there are sessions
         if (!sessions.length) {
             return res.status(200).json({ sessions: [] }); // Return an empty array for frontend
         }
 
-        // Format the data to match frontend table structure
-        const formattedSessions = sessions.map((session, index) => ({
-            number: index + 1,
-            className: session.classId?.courseName || 'N/A', // Use courseName from populated classId
-            sessionName: session.name,
-            date: session.date,
-            startTime: session.startTime,
-            endTime: session.endTime,
-        }));
-
-        res.status(200).json({ sessions: formattedSessions });
+        res.status(200).json({ sessions });
     } catch (error) {
         console.error('Error fetching sessions:', error);
         res.status(500).json({ message: 'Server error. Please try again later.' });

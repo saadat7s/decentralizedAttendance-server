@@ -10,6 +10,7 @@ const { getAttendanceRecord } = require('../../services/solanaService');
 const teacher = require('../../models/teacher');
 const student = require('../../models/student');
 const _class = require('../../models/class');
+const session = require('../../models/session');
 
 
 exports.markAttendance = async (req, res) => {
@@ -32,18 +33,15 @@ exports.markAttendance = async (req, res) => {
     const secretKey = Uint8Array.from(studentWallet.secretKey);
     const studentKeypair = anchor.web3.Keypair.fromSecretKey(secretKey);
 
-    const attendanceRecord = await AttendanceRecord.findOne({ session: sessionId, student: studentId });
+    const attendanceRecord = await AttendanceRecord.create({ session: sessionId, student: studentId, studentSignature: studentId });
     if (!attendanceRecord) {
       return res.status(404).json({ msg: 'Attendance record not found' });
     }
 
-    attendanceRecord.isPresent = true;
-    await attendanceRecord.save();
-
     // Submit attendance to Solana blockchain using the student's wallet
-    const publicKey = await storeAttendanceRecord(studentId, sessionId, true, studentKeypair);
+    // const publicKey = await storeAttendanceRecord(studentId, sessionId, true, studentKeypair);
 
-    res.status(200).json({ msg: 'Attendance marked successfully and submitted to blockchain', attendanceRecord, publicKey });
+    res.status(200).json({ msg: 'Attendance marked successfully.', attendanceRecord, });
   } catch (err) {
     console.error('Error marking attendance:', err.message);
     res.status(500).send('Server error');
@@ -70,19 +68,53 @@ exports.getStudentClasses = async (req, res) => {
     try {
       const user = await student.findOne({ user: id })
       if (user) {
-        let studentClasses = await _class.find({ courseName: user.courses })
-        // for (const course of user.courses) {
-        //   studentClasses.push(
-        //   );
-        // }
-
+        // let studentClasses = await _class.find({ courseName: user.courses })
+        let studentClasses = await _class.aggregate([
+          {
+            $match: {
+              courseName: { $in: user.courses }
+            }
+          },
+          {
+            $lookup: {
+              from: 'sessions',
+              localField: '_id',
+              foreignField: 'classId',
+              as: 'session'
+            }
+          },
+          {
+            $lookup: {
+              from: 'attendancerecords',
+              localField: 'session._id',
+              foreignField: 'session',
+              as: 'attendance'
+            }
+          },
+          {
+            $addFields: {
+              session: {
+                $last: '$session'
+              },
+              attendance: {
+                $map: {
+                  input: '$attendance',
+                  as: 'attendanceIds',
+                  in: '$$attendanceIds.student'
+                }
+              }
+            }
+          }
+        ])
+        console.log(studentClasses)
         return res.status(200).json({ message: "Student classes fetched.", studentClasses });
       }
+
       return res.status(400).json({ message: "No user found." })
 
     } catch (error) {
       console.log(error)
-      res.status(500).json({ message: "Internal Server Error.", error })
+      res.status(500).json({ message: "Internal Server Error.", error: error.message })
     }
   }
   else {

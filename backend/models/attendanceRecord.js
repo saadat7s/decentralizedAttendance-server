@@ -13,10 +13,15 @@ const attendanceRecordSchema = new Schema({
         ref: 'User',
         required: true
     },
-    markedBy: {
+    studentSignature: {
         type: Schema.Types.ObjectId,
         ref: 'User',
         required: true
+    },
+    markedBy: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: false
     },
     isPresent: {
         type: Boolean,
@@ -24,8 +29,8 @@ const attendanceRecordSchema = new Schema({
     },
     markedAt: {
         type: Date,
-        default: Date.now
-    }, isFinalized: { 
+        default: Date.now()
+    }, isFinalized: {
         type: Boolean,
         default: false
     }
