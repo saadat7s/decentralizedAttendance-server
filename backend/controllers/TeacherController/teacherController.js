@@ -181,7 +181,7 @@ exports.startSessionById = async (req, res) => {
                     }
                 }
             ])
-            return res.status(200).json({ message: 'Session already started', session: session[0] });
+            return res.status(200).json({ message: 'Session loaded.', session: session[0] });
         }
         // update the isStarted field
         session.isStarted = true;
@@ -210,23 +210,40 @@ exports.startSessionById = async (req, res) => {
 
 
 exports.finalizeAttendance = async (req, res) => {
-    const { students, } = req.body;
+    const { students, sessionId } = req.body;
+    const teacherId = req.user.id
 
-    if (students && students.length > 0) {
+    if (sessionId && students && students.length > 0) {
         try {
             //Finalizing attendance in db for each student
             for (std of students) {
-                const currentStudentAttendance = await AttendanceRecord.findOne({ student: std._id });
+                let currentStudentAttendance = await AttendanceRecord.findOne({ student: std, session: sessionId });
+
+                //edge case: student hasnt created attendance record and teachers makes one for him
+                if (!currentStudentAttendance) {
+                    currentStudentAttendance = await AttendanceRecord.create({ session: sessionId, student: std, markedBy: std, studentSignature: std })
+                }
 
                 //Todo: Push to blockchain
 
                 currentStudentAttendance.isFinalized = true;
-                currentStudentAttendance.isPresent = std.isPresent;
+                currentStudentAttendance.isPresent = true;
+                currentStudentAttendance.markedBy = teacherId;
 
                 await currentStudentAttendance.save();
             }
-        } catch (error) {
 
+            const classSession = await Session.findById(sessionId);
+            classSession.ended = true;
+            await classSession.save();
+
+            return res.status(200).json({ message: "Session Attendance Submitted.", classSession })
+        } catch (error) {
+            console.log(error)
+            res.status(500).json({ message: "Internal Server Error", error: error.message })
         }
+    }
+    else {
+        res.status(401).json({ message: 'Students and SessionId are needed.' })
     }
 }
