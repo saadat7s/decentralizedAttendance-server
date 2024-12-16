@@ -336,23 +336,38 @@ exports.createSession = async (req, res) => {
     }
 };
 
-// Get all sessions
+
 exports.getAllSessions = async (req, res) => {
     try {
-        // Fetch all sessions and populate class details
-        const sessions = await Session.find();
+        // Fetch all sessions from the database and populate class details
+        const sessions = await Session.find().populate('classId', 'courseName');
 
-        // Check if there are sessions
-        if (!sessions.length) {
-            return res.status(200).json({ sessions: [] }); // Return an empty array for frontend
+        // Check if any sessions exist
+        if (!sessions || sessions.length === 0) {
+            return res.status(404).json({ message: 'No sessions found' });
         }
 
-        res.status(200).json({ sessions });
+        // Format the session data to match frontend requirements
+        const formattedSessions = sessions.map((session, index) => ({
+            id: session._id.toString(),
+            number: index + 1, // Sequential numbering
+            className: session.classId?.courseName || 'N/A', // Course name from populated class
+            sessionName: session.name,
+            date: session.date.toISOString().split('T')[0], // Format date as YYYY-MM-DD
+            isStarted: session.isStarted ? 'Started' : 'Not Started',
+        }));
+
+        // Send formatted sessions in the response
+        res.status(200).json({
+            message: 'Sessions retrieved successfully',
+            sessions: formattedSessions
+        });
     } catch (error) {
         console.error('Error fetching sessions:', error);
-        res.status(500).json({ message: 'Server error. Please try again later.' });
+        res.status(500).json({ message: 'Unable to fetch sessions. Please try again.' });
     }
 };
+
 
 
 // Retrieve List of Teachers

@@ -3,8 +3,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const User = require('../../models/user');
-const student = require('../../models/student');
+const student = require('../../models/student');    
 const teacher = require('../../models/teacher');
+const blacklist = new Set();
 
 exports.loginUser = async (req, res) => {
     const errors = validationResult(req);
@@ -57,17 +58,29 @@ exports.loginUser = async (req, res) => {
         res.status(500).send('Server error');
     }
 };
-exports.userLogout = async (req, res, next) => {
+exports.userLogout = async (req, res) => {
     const token = req.headers['x_auth_token'];
-    // ToDo: invalidate token
+
+    if (!token) {
+        return res.status(400).json({ message: 'No token provided' });
+    }
+
     try {
+        // Decode the token for validity check
+        jwt.verify(token, process.env.JWT_SECRET);
+
+        // Add token to the blacklist
+        blacklist.add(token);
+
         res.status(200).json({ message: 'Logout successful' });
     } catch (err) {
+        console.error('Error during logout:', err);
         res.status(500).json({
             message: 'Error logging out'
         });
     }
-}
+};
+
 
 exports.getUserProfile = async (req, res) => {
     const { id } = req.user;

@@ -37,6 +37,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Use routes
 app.use('/api/auth/login', loginRoutes);
+app.use('/api/auth', loginRoutes);
+
 app.use('/api/profile', profileRoute);
 app.use('/api/admin', adminRoutes);
 app.use('/api/student', studentRoutes);
