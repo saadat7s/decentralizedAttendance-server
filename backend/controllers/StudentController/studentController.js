@@ -1,52 +1,49 @@
 //controllers\StudentController\studentController.js
 
+
 const { validationResult } = require('express-validator');
 const AttendanceRecord = require('../../models/attendanceRecord');
-const { storeAttendanceRecord } = require('../../services/solanaService');
 const Wallet = require('../../models/wallet');
-const anchor = require('@project-serum/anchor');
-const { PublicKey } = require('@solana/web3.js');
-const { getAttendanceRecord } = require('../../services/solanaService');
-const teacher = require('../../models/teacher');
-const student = require('../../models/student');
-const _class = require('../../models/class');
-const session = require('../../models/session');
 
 
 exports.markAttendance = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const { sessionId } = req.body;
-  const studentId = req.user.id; // Assuming student is marking their own attendance
-
   try {
-    // Retrieve the student's wallet
-    const studentWallet = await Wallet.findOne({ email: req.user.email });
-    if (!studentWallet) {
-      return res.status(404).json({ msg: 'Student wallet not found' });
-    }
+    const { sessionId } = req.body;
+    const studentId = req.user.id; // Assuming student is authenticated
 
-    // Load the student's keypair
-    const secretKey = Uint8Array.from(studentWallet.secretKey);
-    const studentKeypair = anchor.web3.Keypair.fromSecretKey(secretKey);
+    // Find or create the attendance record for the session and student
+    let attendanceRecord = await AttendanceRecord.findOne({ session: sessionId, student: studentId });
 
-    const attendanceRecord = await AttendanceRecord.create({ session: sessionId, student: studentId, studentSignature: studentId });
     if (!attendanceRecord) {
-      return res.status(404).json({ msg: 'Attendance record not found' });
+      attendanceRecord = new AttendanceRecord({
+        session: sessionId,
+        student: studentId,
+        isPresent: false,
+        isFinalized: false,
+      });
     }
 
-    // Submit attendance to Solana blockchain using the student's wallet
-    // const publicKey = await storeAttendanceRecord(studentId, sessionId, true, studentKeypair);
+    if (attendanceRecord.isPresent) {
+      return res.status(400).json({ message: 'Attendance already marked.' });
+    }
 
-    res.status(200).json({ msg: 'Attendance marked successfully.', attendanceRecord, });
+    // Mark attendance
+    attendanceRecord.isPresent = true;
+    attendanceRecord.markedAt = new Date();
+    await attendanceRecord.save();
+
+    res.status(200).json({ message: 'Attendance marked successfully.', attendanceRecord });
   } catch (err) {
     console.error('Error marking attendance:', err.message);
-    res.status(500).send('Server error');
+    res.status(500).json({ message: 'Internal server error', error: err.message });
   }
 };
+
+
+
+
+
+
 
 exports.getAttendance = async (req, res) => {
   const { publicKey } = req.params;

@@ -1,15 +1,21 @@
 // controllers\TeacherController\teacherController.js
 
+const { storeAttendanceRecord } = require('../../services/solanaService'); // Import the helper function
+const { Keypair } = require('@solana/web3.js');
+
 const Session = require('../../models/session');
 const Class = require('../../models/class');
-const Teacher = require('../../models/teacher')
+const Teacher = require('../../models/teacher') 
 const Student = require('../../models/student')
 const User = require('../../models/user');
 const AttendanceRecord = require('../../models/attendanceRecord');
-const { validationResult } = require('express-validator');
-const session = require('../../models/session');
-const student = require('../../models/student');
-const { default: mongoose } = require('mongoose');
+
+const { default: mongoose } = require('mongoose');const nacl = require('tweetnacl');
+const { PublicKey } = require('@solana/web3.js'); // Import PublicKey from Solana Web3.js
+const bs58 = require('bs58'); // Import bs58 for Base58 decoding
+const Wallet = require('../../models/wallet');
+
+
 
 
 // Get list of classes assigned to the logged-in teacher
@@ -209,41 +215,66 @@ exports.startSessionById = async (req, res) => {
 };
 
 
+
+
 exports.finalizeAttendance = async (req, res) => {
-    const { students, sessionId } = req.body;
-    const teacherId = req.user.id
-
-    if (sessionId && students && students.length > 0) {
+    try {
+      const { students, sessionId } = req.body;
+  
+      // Retrieve teacher's wallet
+      const teacherWallet = await Wallet.findOne({ email: req.user.email });
+      if (!teacherWallet) {
+        return res.status(404).json({ message: 'Teacher wallet not found.' });
+      }
+  
+      let teacherKeypair;
+      try {
+        teacherKeypair = Keypair.fromSecretKey(Uint8Array.from(teacherWallet.secretKey));
+      } catch (err) {
+        console.error('Failed to parse teacher secret key:', err.message);
+        return res.status(500).json({ message: 'Invalid teacher secret key.', error: err.message });
+      }
+  
+      const finalizedRecords = [];
+      const failedRecords = [];
+  
+      for (const studentId of students) {
         try {
-            //Finalizing attendance in db for each student
-            for (std of students) {
-                let currentStudentAttendance = await AttendanceRecord.findOne({ student: std, session: sessionId });
-
-                //edge case: student hasnt created attendance record and teachers makes one for him
-                if (!currentStudentAttendance) {
-                    currentStudentAttendance = await AttendanceRecord.create({ session: sessionId, student: std, markedBy: std, studentSignature: std })
-                }
-
-                //Todo: Push to blockchain
-
-                currentStudentAttendance.isFinalized = true;
-                currentStudentAttendance.isPresent = true;
-                currentStudentAttendance.markedBy = teacherId;
-
-                await currentStudentAttendance.save();
-            }
-
-            const classSession = await Session.findById(sessionId);
-            classSession.ended = true;
-            await classSession.save();
-
-            return res.status(200).json({ message: "Session Attendance Submitted.", classSession })
-        } catch (error) {
-            console.log(error)
-            res.status(500).json({ message: "Internal Server Error", error: error.message })
+          const attendanceRecord = await AttendanceRecord.findOne({ session: sessionId, student: studentId });
+  
+          if (!attendanceRecord || !attendanceRecord.isPresent) {
+            throw new Error(`Attendance not marked for student ${studentId}`);
+          }
+  
+          if (attendanceRecord.isFinalized) {
+            throw new Error(`Attendance already finalized for student ${studentId}`);
+          }
+  
+          const attendanceAccountPublicKey = await storeAttendanceRecord(
+            sessionId,                     // Session ID
+            studentId,                     // Student ID
+            attendanceRecord.isPresent,    // Is Present
+            true,                          // Is Finalized
+            teacherKeypair                 // Teacher Keypair
+          );
+  
+          attendanceRecord.isFinalized = true;
+          attendanceRecord.isBroadcasted = true;
+          attendanceRecord.broadcastTransactionSignature = attendanceAccountPublicKey.toBase58();
+          await attendanceRecord.save();
+  
+          finalizedRecords.push({
+            session: sessionId,
+            student: studentId,
+            transactionSignature: attendanceAccountPublicKey.toBase58(),
+          });
+        } catch (err) {
+          failedRecords.push({ student: studentId, error: err.message });
         }
+      }
+  
+      res.status(200).json({ message: 'Attendance finalization completed.', finalizedRecords, failedRecords });
+    } catch (err) {
+      res.status(500).json({ message: 'Internal server error', error: err.message });
     }
-    else {
-        res.status(401).json({ message: 'Students and SessionId are needed.' })
-    }
-}
+  };

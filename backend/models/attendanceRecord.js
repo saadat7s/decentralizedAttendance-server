@@ -14,13 +14,11 @@ const attendanceRecordSchema = new Schema({
         required: true
     },
     studentSignature: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
+        type: String,
         required: true
     },
     markedBy: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
+        type: String,
         required: false
     },
     isPresent: {
@@ -33,7 +31,9 @@ const attendanceRecordSchema = new Schema({
     }, isFinalized: {
         type: Boolean,
         default: false
-    }
+    },
+    isBroadcasted: { type: Boolean, default: false },
+    broadcastTransactionSignature: String, 
 });
 
 module.exports = mongoose.model('AttendanceRecord', attendanceRecordSchema);

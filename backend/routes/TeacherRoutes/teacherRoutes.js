@@ -4,7 +4,7 @@ const express = require('express');
 const { check } = require('express-validator');
 const { getAssignedClasses, getStudentsByClass, getSessionByClass, startSessionById, finalizeAttendance } = require('../../controllers/TeacherController/teacherController');
 const { isAuth } = require('../../middlewares/authMiddleware');
-const { startSession } = require('../../models/session');
+const { storeAttendanceRecord } = require('../../services/solanaService');
 
 const router = express.Router();
 
@@ -22,7 +22,12 @@ router.get('/get-sessions-by-class/:classId', isAuth, getSessionByClass);
 // start session automatically
 router.post('/start-session-upon-selection/:sessionId', isAuth, startSessionById);
 
+// finalize attendance
 router.patch('/finalize-attendance', isAuth, finalizeAttendance)
+
+// broadcast Attendance
+router.post('/store-attendance', isAuth, storeAttendanceRecord)
+
 
 
 
