@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { getAttendanceRecord } = require('../services/solanaService');
+const { getAttendanceRecord } = require('../services');
 
 // Middleware for authentication
-const { isAuth } = require('../middlewares/authMiddleware');
+const { isAuth } = require('../../middlewares/authMiddleware');
 
 // Endpoint to fetch attendance records
 router.get('/:accountPublicKey', isAuth, async (req, res) => {

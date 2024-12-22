@@ -221,18 +221,8 @@ exports.finalizeAttendance = async (req, res) => {
     try {
       const { students, sessionId } = req.body;
   
-      // Retrieve teacher's wallet
-      const teacherWallet = await Wallet.findOne({ email: req.user.email });
-      if (!teacherWallet) {
-        return res.status(404).json({ message: 'Teacher wallet not found.' });
-      }
-  
-      let teacherKeypair;
-      try {
-        teacherKeypair = Keypair.fromSecretKey(Uint8Array.from(teacherWallet.secretKey));
-      } catch (err) {
-        console.error('Failed to parse teacher secret key:', err.message);
-        return res.status(500).json({ message: 'Invalid teacher secret key.', error: err.message });
+      if (!sessionId || !students || students.length === 0) {
+        return res.status(400).json({ message: 'Students and sessionId are required.' });
       }
   
       const finalizedRecords = [];
@@ -240,41 +230,48 @@ exports.finalizeAttendance = async (req, res) => {
   
       for (const studentId of students) {
         try {
+          // Find the attendance record for the given session and student
           const attendanceRecord = await AttendanceRecord.findOne({ session: sessionId, student: studentId });
+          if (!attendanceRecord) throw new Error(`Attendance record not found for student ${studentId}`);
+          if (attendanceRecord.isFinalized) throw new Error(`Attendance already finalized for student ${studentId}`);
   
-          if (!attendanceRecord || !attendanceRecord.isPresent) {
-            throw new Error(`Attendance not marked for student ${studentId}`);
-          }
+          console.log(`Storing attendance on blockchain for student ${studentId}...`);
   
-          if (attendanceRecord.isFinalized) {
-            throw new Error(`Attendance already finalized for student ${studentId}`);
-          }
-  
+          // Store the attendance record on the blockchain
           const attendanceAccountPublicKey = await storeAttendanceRecord(
-            sessionId,                     // Session ID
-            studentId,                     // Student ID
-            attendanceRecord.isPresent,    // Is Present
-            true,                          // Is Finalized
-            teacherKeypair                 // Teacher Keypair
+            attendanceRecord.session.toString(),   // Convert ObjectId to string
+            attendanceRecord.student.toString(),   // Convert ObjectId to string
+            attendanceRecord.isPresent,            // Presence status
+            new Date(attendanceRecord.markedAt).getTime(), // Timestamp
+            true                                   // Is finalized
           );
   
+          // Update the database record
           attendanceRecord.isFinalized = true;
           attendanceRecord.isBroadcasted = true;
-          attendanceRecord.broadcastTransactionSignature = attendanceAccountPublicKey.toBase58();
+          attendanceRecord.broadcastTransactionSignature = attendanceAccountPublicKey;
           await attendanceRecord.save();
   
           finalizedRecords.push({
-            session: sessionId,
-            student: studentId,
-            transactionSignature: attendanceAccountPublicKey.toBase58(),
+            session: attendanceRecord.session,
+            student: attendanceRecord.student,
+            transactionSignature: attendanceAccountPublicKey,
           });
+  
+          console.log(`Attendance successfully stored for student ${studentId}.`);
         } catch (err) {
+          console.error(`Failed to finalize attendance for student ${studentId}:`, err.message);
           failedRecords.push({ student: studentId, error: err.message });
         }
       }
   
-      res.status(200).json({ message: 'Attendance finalization completed.', finalizedRecords, failedRecords });
+      res.status(200).json({
+        message: 'Attendance finalization completed.',
+        finalizedRecords,
+        failedRecords,
+      });
     } catch (err) {
+      console.error('Error finalizing attendance:', err.message);
       res.status(500).json({ message: 'Internal server error', error: err.message });
     }
   };

@@ -15,6 +15,7 @@ const profileRoute = require('./routes/profile');
 const teacherRoutes = require('./routes/TeacherRoutes/teacherRoutes')
 const adminRoutes = require('./routes/AdminRoutes/adminRoutes');
 const studentRoutes = require('./routes/StudentRoutes/studentRoutes')
+const retrieveAttendance = require('./services/retrieveAttendance');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -43,6 +44,7 @@ app.use('/api/profile', profileRoute);
 app.use('/api/admin', adminRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/teacher', teacherRoutes);
+app.use('/api/attendance', retrieveAttendance)
 
 // Connect to MongoDB
 const PORT = process.env.PORT || 5000;

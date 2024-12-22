@@ -15,7 +15,7 @@ const attendanceRecordSchema = new Schema({
     },
     studentSignature: {
         type: String,
-        required: true
+        required: false
     },
     markedBy: {
         type: String,

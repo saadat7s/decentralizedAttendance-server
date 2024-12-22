@@ -4,6 +4,8 @@
 const { validationResult } = require('express-validator');
 const AttendanceRecord = require('../../models/attendanceRecord');
 const Wallet = require('../../models/wallet');
+const student = require('../../models/student');
+const _class = require('../../models/class');
 
 
 exports.markAttendance = async (req, res) => {
