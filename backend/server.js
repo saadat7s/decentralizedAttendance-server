@@ -8,6 +8,8 @@ const morgan = require('morgan');
 const dotenv = require('dotenv');
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger.json');
+const connectDB = require('./connection');
+
 
 // Import routes
 const loginRoutes = require('./routes/AuthRoutes/loginUser');
@@ -46,20 +48,21 @@ app.use('/api/student', studentRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/attendance', retrieveAttendance)
 
-// Connect to MongoDB
+
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI;
 
-mongoose.connect(MONGO_URI)
-    .then(() => {
-        console.log('Connected to MongoDB');
-        // Start the server
-        app.listen(PORT, () => {
-            console.log(`Server is running on port ${PORT}`);
-        });
-    })
-    .catch(err => {
-        console.error('Failed to connect to MongoDB', err);
-    });
-
-module.exports = app;
+// Start server after DB connection
+const startServer = async () => {
+    try {
+      await connectDB(); // Connect to MongoDB first
+      
+      app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+      });
+    } catch (error) {
+      console.error('Failed to start server:', error);
+      process.exit(1);
+    }
+  };
+  
+  startServer();
