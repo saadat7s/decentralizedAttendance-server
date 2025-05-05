@@ -72,7 +72,6 @@ router.post(
   [
       check('classId', 'Class ID is required').notEmpty(),
       check('name', 'Session name is required').notEmpty(),
-      check('date', 'Session date is required').isISO8601(),
   ],
   isAuth,
   adminUserController.createSession

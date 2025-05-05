@@ -302,11 +302,11 @@ exports.editClass = async (req, res) => {
 
 // Create a session for a class
 exports.createSession = async (req, res) => {
-    const { classId, name, dateTime } = req.body;
+    const { classId, name, date } = req.body;
 
     try {
         // Validate required fields
-        if (!classId || !name || !dateTime) {
+        if (!classId || !name || !date) {
             return res.status(400).json({ message: 'All fields are required.' });
         }
 
@@ -321,7 +321,7 @@ exports.createSession = async (req, res) => {
         const newSession = new Session({
             classId,
             name,
-            date: dateTime,
+            date,
             createdBy: req.user.id, // Assuming req.user contains the logged-in admin info
         });
 
