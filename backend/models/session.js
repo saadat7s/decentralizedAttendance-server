@@ -2,39 +2,17 @@
 // models\session.js
 
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
 
-const sessionSchema = new Schema({
-    name: {
-        type: String,
-        required: true
-    },
-    startTime: {
-        type: Date,
-        required: true
-    },
-    endTime: {
-        type: Date,
-        required: true
-    },
-    class: {
-        type: Schema.Types.ObjectId,
-        ref: 'Class',
-        required: true
-    },
-    teacher: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    isCompleted: {
+const sessionSchema = new mongoose.Schema({
+    classId: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', required: true },
+    name: { type: String, required: true },
+    date: { type: Date, required: true },
+    ended: { type: Boolean, default: false },
+    isStarted: {
         type: Boolean,
-        default: false
-    }, 
-    isFinalized: { // New field to track finalization
-        type: Boolean,
-        default: false
-    }
-}, { timestamps: true });
+        default: false,
+    },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Admin creating the session
+});
 
 module.exports = mongoose.model('Session', sessionSchema);

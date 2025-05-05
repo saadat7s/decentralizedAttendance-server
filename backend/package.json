@@ -4,7 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -14,7 +15,7 @@
     "@solana/web3.js": "^1.95.1",
     "bcryptjs": "^2.4.3",
     "borsh": "^2.0.0",
-    "bs58": "^6.0.0",
+    "bs58": "^5.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
@@ -22,6 +23,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.1",
     "morgan": "^1.10.0",
+    "nodemon": "^3.1.7",
     "swagger-ui-express": "^5.0.1"
   }
 }

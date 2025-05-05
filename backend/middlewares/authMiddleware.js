@@ -1,22 +1,27 @@
-    // middlewares/authMiddleware.js
+// middlewares/authMiddleware.js
 
-    const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
+const blacklist = new Set(); 
 
-    module.exports = function(req, res, next) {
-        // Get token from header
-        const token = req.header('x-auth-token');
+exports.isAuth = (req, res, next) => {
+    const token = req.headers['x_auth_token'];
 
-        // Check if not token
-        if (!token) {
-            return res.status(401).json({ msg: 'No token, authorization denied' });
-        }
+    if (!token) {
+        return res.status(401).json({ message: 'No token provided, authorization denied' });
+    }
 
-        // Verify token
-        try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            req.user = decoded.user;
-            next();
-        } catch (err) {
-            res.status(401).json({ msg: 'Token is not valid' });
-        }
-    };
+    // Check if the token is in the blacklist
+    if (blacklist.has(token)) {
+        return res.status(401).json({ message: 'Token has been invalidated' });
+    }
+
+    try {
+        // Verify the token's validity
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded.user; // Attach user details to the request object
+        next();
+    } catch (err) {
+        console.error('Invalid token:', err);
+        res.status(401).json({ message: 'Token is not valid' });
+    }
+};
