@@ -52,20 +52,20 @@ app.use('/api/attendance', retrieveAttendance)
 const PORT = process.env.PORT || 5000;
 
 // Start server after DB connection
-const startServer = async () => {
+const connectToDb = async () => {
     try {
         await connectDB(); // Connect to MongoDB first
-
-        app.listen(PORT, () => {
-            console.log(`Server is running on port ${PORT}`);
-        });
     } catch (error) {
         console.error('Failed to start server:', error);
         process.exit(1);
     }
 };
 
-startServer();
+connectToDb();
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
 
 app.get("/", (req, res) => {
     res.status(200).json({ message: "Server Up!" })
