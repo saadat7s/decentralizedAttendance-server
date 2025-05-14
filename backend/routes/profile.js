@@ -1,12 +1,12 @@
 // routes/profile.js
 
 const express = require('express');
-const auth = require('../middlewares/authMiddleware');
+const { isAuth } = require('../middlewares/authMiddleware');
 const User = require('../models/user');
 
 const router = express.Router();
 
-router.get('/', auth, async (req, res) => {
+router.get('/', isAuth, async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');
         res.json(user);

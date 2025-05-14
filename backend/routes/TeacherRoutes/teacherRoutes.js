@@ -2,47 +2,33 @@
 
 const express = require('express');
 const { check } = require('express-validator');
-const auth = require('../../middlewares/authMiddleware');
-const { startSession, selectClass, markAttendance, endSession  } = require('../../controllers/TeacherController/teacherController');
+const { getAssignedClasses, getStudentsByClass, getSessionByClass, startSessionById, finalizeAttendance } = require('../../controllers/TeacherController/teacherController');
+const { isAuth } = require('../../middlewares/authMiddleware');
+const { storeAttendanceRecord } = require('../../services/solanaService');
 
 const router = express.Router();
 
-// End session route
-router.post(
-    '/endSession',
-    [
-        check('sessionId', 'Session ID is required').not().isEmpty()
-    ],
-    auth,
-    endSession
-);
 
-// Finalize attendance route
-router.post(
-    '/finalizeAttendance',
-    [
-        check('sessionId', 'Session ID is required').not().isEmpty(),
-        check('studentId', 'Student ID is required').not().isEmpty()
-    ],
-    auth,
-    markAttendance
-);
 
-// Select class route
-router.get('/selectClass', auth, selectClass);
+// getAssignedClasses
+router.get('/get-assigned-classes', isAuth, getAssignedClasses);
 
-// Start session route
-router.post(
-    '/startSession',
-    [
-        check('name', 'Session name is required').not().isEmpty(),
-        check('startTime', 'Start time is required').not().isEmpty(),
-        check('endTime', 'End time is required').not().isEmpty(),
-        check('classId', 'Class ID is required').not().isEmpty()
-    ],
-    auth,
-    startSession
-);
+// getStudentsByClass
+router.get('/get-students-by-class/:classId', isAuth, getStudentsByClass);
+
+// getSessionsByClass
+router.get('/get-sessions-by-class/:classId', isAuth, getSessionByClass);
+
+// start session automatically
+router.post('/start-session-upon-selection/:sessionId', isAuth, startSessionById);
+
+// finalize attendance
+router.patch('/finalize-attendance', isAuth, finalizeAttendance)
+
+// broadcast Attendance
+router.post('/store-attendance', isAuth, storeAttendanceRecord)
+
+
 
 
 module.exports = router;

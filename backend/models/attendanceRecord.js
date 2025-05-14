@@ -13,10 +13,13 @@ const attendanceRecordSchema = new Schema({
         ref: 'User',
         required: true
     },
+    studentSignature: {
+        type: String,
+        required: false
+    },
     markedBy: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        type: String,
+        required: false
     },
     isPresent: {
         type: Boolean,
@@ -24,11 +27,13 @@ const attendanceRecordSchema = new Schema({
     },
     markedAt: {
         type: Date,
-        default: Date.now
-    }, isFinalized: { // New field to lock attendance records
+        default: Date.now()
+    }, isFinalized: {
         type: Boolean,
         default: false
-    }
+    },
+    isBroadcasted: { type: Boolean, default: false },
+    broadcastTransactionSignature: String, 
 });
 
 module.exports = mongoose.model('AttendanceRecord', attendanceRecordSchema);
