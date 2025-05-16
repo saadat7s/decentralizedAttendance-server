@@ -12,6 +12,7 @@ const _class = require('../../models/class');
 const user = require('../../models/user');
 const Session = require('../../models/session');
 const student = require('../../models/student');
+const mongoose = require('mongoose');
 
 // Register a Teacher
 exports.registerTeacher = async (req, res) => {
@@ -79,23 +80,61 @@ exports.registerTeacher = async (req, res) => {
 
 
 // Register a Student
+// In controllers/AdminController/adminUserController.js
 exports.registerStudent = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        return res.status(400).json({ 
+            success: false,
+            code: 'VALIDATION_ERROR',
+            message: 'Validation errors', 
+            errors: errors.array() 
+        });
     }
 
     const { name, email, password, rollNumber, department, semester, program, admissionYear, batch } = req.body;
 
+    // Start a MongoDB session for the transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         // Check if user already exists
-        let user = await User.findOne({ email });
-        if (user) {
-            return res.status(400).json({ message: 'User already exists' });
+        let existingUser = await User.findOne({ email }).session(session);
+        if (existingUser) {
+            await session.abortTransaction();
+            session.endSession();
+            console.log(`Registration attempted with existing email: ${email}`);
+            return res.status(400).json({ 
+                success: false,
+                code: 'DUPLICATE_EMAIL',
+                message: 'User already exists with this email' 
+            });
         }
-        let existingWallet = await Wallet.findOne({ email });
+        
+        // Check if student with this roll number already exists
+        const existingStudent = await Student.findOne({ rollNumber }).session(session);
+        if (existingStudent) {
+            await session.abortTransaction();
+            session.endSession();
+            console.log(`Registration attempted with existing roll number: ${rollNumber}`);
+            return res.status(400).json({ 
+                success: false,
+                code: 'DUPLICATE_ROLL_NUMBER',
+                message: 'Student with this roll number already exists' 
+            });
+        }
+        
+        let existingWallet = await Wallet.findOne({ email }).session(session);
         if (existingWallet) {
-            return res.status(400).json({ message: 'Wallet already exists for this email' });
+            await session.abortTransaction();
+            session.endSession();
+            console.log(`Registration attempted with email that already has a wallet: ${email}`);
+            return res.status(400).json({ 
+                success: false,
+                code: 'DUPLICATE_WALLET',
+                message: 'Wallet already exists for this email' 
+            });
         }
 
         // Create new Solana wallet
@@ -103,19 +142,19 @@ exports.registerStudent = async (req, res) => {
         const publicKey = newWallet.publicKey.toString();
         const secretKey = Array.from(newWallet.secretKey);
 
+        // Hash the password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
         // Create new User
-        user = new User({
+        const user = new User({
             name,
             email,
-            password,
+            password: hashedPassword,
             role: 'student',
             publicKey
         });
-
-        // Hash the password
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(password, salt);
-        await user.save();
+        await user.save({ session });
 
         // Save wallet details
         const wallet = new Wallet({
@@ -123,7 +162,7 @@ exports.registerStudent = async (req, res) => {
             publicKey,
             secretKey
         });
-        await wallet.save();
+        await wallet.save({ session });
 
         // Create Student profile
         const student = new Student({
@@ -135,21 +174,94 @@ exports.registerStudent = async (req, res) => {
             admissionYear,
             batch
         });
-        await student.save();
+        await student.save({ session });
+
+        // Commit the transaction
+        await session.commitTransaction();
+        session.endSession();
+
+        console.log(`Student registered successfully: ${name}, ${email}, Roll: ${rollNumber}`);
 
         // Include credentials in response
         res.status(201).json({
+            success: true,
+            code: 'STUDENT_REGISTERED',
             message: 'Student registered successfully',
-            student,
+            student: {
+                id: student._id,
+                name: user.name,
+                email: user.email,
+                rollNumber: student.rollNumber,
+                department: student.department,
+                publicKey: user.publicKey
+            },
             credentials: { email, password }
         });
     } catch (err) {
-        console.error('Error in registering student:', err.message);
-        res.status(500).send('Server error');
+        // Abort the transaction on error
+        await session.abortTransaction();
+        session.endSession();
+        
+        // Check for MongoDB duplicate key error
+        if (err.code === 11000) {
+            // Detailed error logging
+            console.error('Duplicate key error during student registration:', {
+                error: err.message,
+                keyPattern: err.keyPattern,
+                keyValue: err.keyValue,
+                code: err.code
+            });
+            
+            // Determine which field caused the duplication
+            const duplicateField = Object.keys(err.keyPattern || {})[0] || 'unknown field';
+            const duplicateValue = err.keyValue ? err.keyValue[duplicateField] : 'unknown value';
+            
+            // Map MongoDB field names to more user-friendly names
+            const fieldMap = {
+                'rollNumber': 'roll number',
+                'email': 'email address',
+                'user.email': 'email address'
+            };
+            
+            const friendlyFieldName = fieldMap[duplicateField] || duplicateField;
+            const errorCodeMap = {
+                'rollNumber': 'DUPLICATE_ROLL_NUMBER',
+                'email': 'DUPLICATE_EMAIL',
+                'user.email': 'DUPLICATE_EMAIL'
+            };
+            
+            return res.status(400).json({ 
+                success: false,
+                code: errorCodeMap[duplicateField] || 'DUPLICATE_KEY_ERROR',
+                message: `A student with this ${friendlyFieldName} (${duplicateValue}) already exists`,
+                field: duplicateField
+            });
+        }
+        
+        // Log the detailed error
+        console.error('Error in registering student:', {
+            error: err.message,
+            stack: err.stack,
+            requestBody: {
+                name,
+                email,
+                rollNumber,
+                department,
+                semester,
+                program,
+                admissionYear,
+                batch
+            }
+        });
+        
+        res.status(500).json({ 
+            success: false,
+            code: 'SERVER_ERROR',
+            message: 'An error occurred while registering the student',
+            error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
+        });
     }
 };
-
-
 
 
 /**
