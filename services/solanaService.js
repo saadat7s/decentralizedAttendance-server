@@ -4,7 +4,6 @@ const { Connection, Keypair, SystemProgram, PublicKey } = require('@solana/web3.
 const fs = require('fs');
 const BN = require('bn.js');
 require('dotenv').config();
-const { getWalletKeyFromEnv } = require('../vercel-solana-adapter');
 
 
 // Load the IDL for the program
@@ -14,8 +13,7 @@ const network = process.env.ANCHOR_PROVIDER_URL || 'https://api.devnet.solana.co
 const connection = new Connection(network, 'confirmed');
 
 // Load the Anchor wallet keypair
-const secretKey = getWalletKeyFromEnv();
-const anchorWalletKeypair = Keypair.fromSecretKey(secretKey);
+const anchorWalletKeypair = fs.readFileSync(process.env.ANCHOR_WALLET, 'utf8')
 const provider = new anchor.AnchorProvider(connection, new anchor.Wallet(anchorWalletKeypair), {
   preflightCommitment: 'processed',
 });
