@@ -10,7 +10,8 @@ const Student = require('../../models/student')
 const User = require('../../models/user');
 const AttendanceRecord = require('../../models/attendanceRecord');
 
-const { default: mongoose } = require('mongoose');const nacl = require('tweetnacl');
+const { default: mongoose } = require('mongoose');
+const nacl = require('tweetnacl');
 const { PublicKey } = require('@solana/web3.js'); // Import PublicKey from Solana Web3.js
 const bs58 = require('bs58'); // Import bs58 for Base58 decoding
 const Wallet = require('../../models/wallet');
