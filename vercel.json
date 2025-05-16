@@ -11,12 +11,5 @@
       "src": "/(.*)",
       "dest": "server.js"
     }
-  ],
-  "env": {
-    "MONGO_URI": "@mongo_uri",
-    "JWT_SECRET": "@jwt_secret",
-    "ANCHOR_PROVIDER_URL": "@anchor_provider_url",
-    "ANCHOR_WALLET_CONTENT": "@anchor_wallet_content",
-    "PORT": "5000"
-  }
+  ]
 }
