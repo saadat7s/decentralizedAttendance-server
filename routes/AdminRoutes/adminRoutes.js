@@ -94,4 +94,7 @@ router.get('/getStudentById/:id', isAuth, adminUserController.getStudentById);
 
 router.get('/get-all-classes', isAuth, adminUserController.getAllClasses)
 
+// Dashboard statistics
+router.get('/get-dashboard-stats', adminUserController.getDashboardStatistics);
+
 module.exports = router;

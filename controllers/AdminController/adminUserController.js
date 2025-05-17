@@ -543,3 +543,41 @@ exports.getAllClasses = async (req, res) => {
         return res.status(500).json({ message: 'Internal Server Error.', error })
     }
 }
+
+
+/**
+ * Get dashboard statistics
+ * @route GET /api/admin/get-all-numbers
+ * @access Private (Admin only)
+ */
+exports.getDashboardStatistics = async (req, res) => {
+    try {
+        // Execute all queries in parallel for better performance
+        const [
+            teacherCount,
+            studentCount,
+            classCount,
+            sessionCount
+        ] = await Promise.all([
+            Teacher.countDocuments(),
+            Student.countDocuments(),
+            Class.countDocuments(),
+            Session.countDocuments()
+        ]);
+
+        // Return the statistics
+        res.status(200).json({
+            data: {
+                teachers: teacherCount,
+                students: studentCount,
+                classes: classCount,
+                sessions: sessionCount
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching dashboard statistics:', error);
+        res.status(500).json({
+            message: 'Error fetching dashboard statistics'
+        });
+    }
+};
