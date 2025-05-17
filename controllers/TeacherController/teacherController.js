@@ -1,6 +1,6 @@
 // controllers\TeacherController\teacherController.js
 
-const { storeAttendanceRecord } = require('../../services/solanaService'); // Import the helper function
+const { storeAttendanceRecord, finalizeAttendanceRecord } = require('../../services/solanaService'); // Import the helper function
 const { Keypair } = require('@solana/web3.js');
 
 const Session = require('../../models/session');
@@ -217,7 +217,6 @@ exports.startSessionById = async (req, res) => {
 
 
 
-
 exports.finalizeAttendance = async (req, res) => {
     try {
       const { students, sessionId } = req.body;
@@ -233,41 +232,65 @@ exports.finalizeAttendance = async (req, res) => {
         try {
           // Find the attendance record for the given session and student
           const attendanceRecord = await AttendanceRecord.findOne({ session: sessionId, student: studentId });
-          if (!attendanceRecord) throw new Error(`Attendance record not found for student ${studentId}`);
-          if (attendanceRecord.isFinalized) throw new Error(`Attendance already finalized for student ${studentId}`);
+          if (!attendanceRecord) {
+            throw new Error(`Attendance record not found for student ${studentId}`);
+          }
+          if (attendanceRecord.isFinalized) {
+            throw new Error(`Attendance already finalized for student ${studentId}`);
+          }
   
-          console.log(`Storing attendance on blockchain for student ${studentId}...`);
+          // Check if the record has already been broadcasted to the blockchain
+          if (!attendanceRecord.isBroadcasted || !attendanceRecord.broadcastTransactionSignature) {
+            console.log(`Broadcasting attendance to blockchain for student ${studentId}...`);
   
-          // Store the attendance record on the blockchain
-          const attendanceAccountPublicKey = await storeAttendanceRecord(
-            attendanceRecord.session.toString(),   // Convert ObjectId to string
-            attendanceRecord.student.toString(),   // Convert ObjectId to string
-            attendanceRecord.isPresent,            // Presence status
-            new Date(attendanceRecord.markedAt).getTime(), // Timestamp
-            true                                   // Is finalized
+            // Store the attendance record on the blockchain
+            const attendanceAccountPublicKey = await storeAttendanceRecord(
+              attendanceRecord.session.toString(),   // Convert ObjectId to string
+              attendanceRecord.student.toString(),   // Convert ObjectId to string
+              attendanceRecord.isPresent,            // Presence status
+              new Date(attendanceRecord.markedAt).getTime(), // Timestamp
+              false                                  // Not finalized yet (we'll do this separately)
+            );
+  
+            // Update the record with the transaction signature
+            attendanceRecord.isBroadcasted = true;
+            attendanceRecord.broadcastTransactionSignature = attendanceAccountPublicKey;
+            await attendanceRecord.save();
+            
+            console.log(`Attendance successfully broadcasted for student ${studentId}.`);
+          }
+  
+          // Now finalize the attendance record on the blockchain
+          console.log(`Finalizing attendance on blockchain for student ${studentId}...`);
+          const txSignature = await finalizeAttendanceRecord(
+            attendanceRecord.broadcastTransactionSignature
           );
   
-          // Update the database record
+          // Update the database record to mark as finalized
           attendanceRecord.isFinalized = true;
-          attendanceRecord.isBroadcasted = true;
-          attendanceRecord.broadcastTransactionSignature = attendanceAccountPublicKey;
+          attendanceRecord.finalizationTransactionSignature = txSignature;
           await attendanceRecord.save();
   
           finalizedRecords.push({
             session: attendanceRecord.session,
             student: attendanceRecord.student,
-            transactionSignature: attendanceAccountPublicKey,
+            broadcastTransactionSignature: attendanceRecord.broadcastTransactionSignature,
+            finalizationTransactionSignature: txSignature
           });
   
-          console.log(`Attendance successfully stored for student ${studentId}.`);
+          console.log(`Attendance successfully finalized for student ${studentId}.`);
         } catch (err) {
           console.error(`Failed to finalize attendance for student ${studentId}:`, err.message);
           failedRecords.push({ student: studentId, error: err.message });
         }
       }
   
+      // Summarize results
+      const successCount = finalizedRecords.length;
+      const failCount = failedRecords.length;
+  
       res.status(200).json({
-        message: 'Attendance finalization completed.',
+        message: `Attendance finalization completed. Successfully finalized: ${successCount}, Failed: ${failCount}`,
         finalizedRecords,
         failedRecords,
       });
