@@ -35,8 +35,7 @@ const app = express();
 // Middleware setup
 app.use(express.json());
 app.use(cors({
-    origin: process.env.CLIENT_URL || "*",  
-    credentials: true,
+    origin: process.env.CLIENT_URL || "*",
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
 app.use(morgan('dev'));
