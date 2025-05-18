@@ -1,105 +1,238 @@
-
 const anchor = require('@project-serum/anchor');
-const { Connection, Keypair, SystemProgram, PublicKey } = require('@solana/web3.js');
+const { Connection, Keypair, SystemProgram, PublicKey, clusterApiUrl } = require('@solana/web3.js');
 const fs = require('fs');
 const BN = require('bn.js');
 require('dotenv').config();
 
+// Helper function to get the program
+const getProgram = () => {
+  // Read IDL from file
+  const idl = require("./idl.json");
+  
+  // Read wallet keypair from file - this should be your funding wallet
+  const walletKeypair = require("./FundingWallet.json");
 
-// Load the IDL for the program
-const idl = require('../services/idl.json');
-const programID = new anchor.web3.PublicKey('7HMBCUzKs9dAxjZo1jkfe42rM66acJRcCydGZt39V5ZR');
-const network = process.env.ANCHOR_PROVIDER_URL || 'https://api.devnet.solana.com';
-const connection = new Connection(network, 'confirmed');
+  const anchorWallet= Keypair.fromSecretKey(new Uint8Array(walletKeypair));
+  
+  // Connect to Solana network (devnet by default)
+  const network = process.env.SOLANA_NETWORK || "devnet";
+  const connection = new Connection(
+    clusterApiUrl(network), "confirmed"
+  );
 
-// Load the Anchor wallet keypair
-const anchorWalletKeypair = fs.readFileSync(process.env.ANCHOR_WALLET, 'utf8')
-const provider = new anchor.AnchorProvider(connection, new anchor.Wallet(anchorWalletKeypair), {
-  preflightCommitment: 'processed',
-});
-anchor.setProvider(provider);
+  // Program ID from your deployed contract
+  const programId = new PublicKey("HrQs2YeAy675efyiC7qa1Lrs7iPAg5zNcJXAZ7Y28fVr");
 
-const program = new anchor.Program(idl, programID, provider);
+  // Create provider
+  const provider = new anchor.AnchorProvider(
+    connection,
+    new anchor.Wallet(anchorWallet),
+    {
+      preflightCommitment: "confirmed",
+      commitment: "confirmed"
+    }
+  );
+  
+  // Set the provider
+  anchor.setProvider(provider);
+
+  // Return the program instance, wallet, and connection
+  return {
+    program: new anchor.Program(idl, programId, provider),
+    anchorWallet,
+    connection,
+  };
+};
 
 /**
  * Store an attendance record on the Solana blockchain.
- * @param {string} sessionId - The session ID.
  * @param {string} studentId - The student ID.
+ * @param {string} sessionId - The session ID.
  * @param {boolean} isPresent - Whether the student is present.
  * @param {number} markedAt - The timestamp when the attendance was marked.
  * @param {boolean} isFinalized - Whether the attendance is finalized.
- * @returns {string} - The public key of the attendance account.
+ * @returns {Promise<string>} - The public key of the attendance account.
  */
-async function storeAttendanceRecord(sessionId, studentId, isPresent, markedAt, isFinalized) {
-  // Generate a new keypair for the attendance account
-  const attendanceAccount = Keypair.generate();
-
+async function storeAttendanceRecord(studentId, sessionId, isPresent, markedAt, isFinalized = false) {
   try {
+    // Make sure program is initialized
+    const { program } = getProgram();
+    
+    // Generate a new keypair for the attendance account
+    const attendanceAccount = Keypair.generate();
+
     // Debug log for inputs
-    console.log('Session ID:', sessionId);
+    console.log('Storing attendance record with:');
     console.log('Student ID:', studentId);
+    console.log('Session ID:', sessionId);
     console.log('Is Present:', isPresent);
     console.log('Is Finalized:', isFinalized);
     console.log('Marked At (Unix Timestamp):', markedAt);
-    console.log('Attendance Account Public Key:', attendanceAccount.publicKey.toBase58());
+    console.log('Attendance Account Public Key:', attendanceAccount.publicKey.toString());
 
     // Call the `store_attendance` method in the smart contract
     const tx = await program.methods
       .storeAttendance(
-        sessionId,  // Session ID (string)
-        studentId,  // Student ID (string)
-        isPresent,  // Presence Status (bool)
-        new BN(markedAt), // Marked timestamp (BN - i64)
-        isFinalized // Finalized Status (bool)
+        studentId.toString(),  // Student ID (string)
+        sessionId.toString(),  // Session ID (string)
+        isPresent,             // Presence Status (bool)
+        new BN(markedAt),      // Marked timestamp (BN - i64)
+        isFinalized            // Finalized Status (bool)
       )
       .accounts({
-        attendance: attendanceAccount.publicKey, // New attendance account
-        user: anchorWalletKeypair.publicKey,    // Anchor wallet is the payer
-        systemProgram: SystemProgram.programId, // System program
+        attendance: attendanceAccount.publicKey,    // New attendance account
+        user: program.provider.wallet.publicKey,    // Payer for the transaction
+        systemProgram: SystemProgram.programId,     // System program
       })
-      .signers([attendanceAccount, anchorWalletKeypair]) // Signers for the transaction
+      .signers([attendanceAccount])
       .rpc();
 
-    // Log success and return the public key of the attendance account
-    console.log(`Attendance record successfully stored: ${attendanceAccount.publicKey.toBase58()}`);
-    return attendanceAccount.publicKey.toBase58();
+    console.log(`Transaction signature: ${tx}`);
+    console.log(`Attendance record successfully stored: ${attendanceAccount.publicKey.toString()}`);
+    
+    return attendanceAccount.publicKey.toString();
   } catch (err) {
-    // Log error and rethrow for higher-level handling
-    console.error('Error storing attendance record:', err.message);
+    console.error('Error storing attendance record:', err);
     throw err;
   }
 }
 
-
-
-// Fetch attendance record by account public key
+/**
+ * Get attendance record from the blockchain.
+ * @param {string} accountPublicKey - The public key of the attendance account.
+ * @returns {Promise<Object>} - The attendance record.
+ */
 async function getAttendanceRecord(accountPublicKey) {
   try {
-    // Initialize the connection and program
-    const network = process.env.ANCHOR_PROVIDER_URL || 'https://api.devnet.solana.com';
-    const connection = new Connection(network, 'confirmed');
-    const idl = require('../services/idl.json'); // Smart contract IDL
-    const programID = new PublicKey('7HMBCUzKs9dAxjZo1jkfe42rM66acJRcCydGZt39V5ZR');
-    const provider = anchor.AnchorProvider.local(network);
-    anchor.setProvider(provider);
-    const program = new anchor.Program(idl, programID, provider);
-
-    // Fetch the account data
-    const attendanceAccount = new PublicKey(accountPublicKey);
-    const accountData = await program.account.attendance.fetch(attendanceAccount);
-
-    // Return the fetched attendance data
+    // Initialize the program if not initialized
+    const { program } = getProgram();    
+    
+    // Parse the public key
+    const attendanceKey = new PublicKey(accountPublicKey);
+    
+    // Fetch account data
+    const attendanceAccount = await program.account.attendance.fetch(attendanceKey);
+    
+    // Return the formatted attendance data
     return {
-      studentId: accountData.studentId,
-      sessionId: accountData.sessionId,
-      isPresent: accountData.isPresent,
-      markedAt: accountData.markedAt.toString(), // Convert BN to string
-      isFinalized: accountData.isFinalized,
+      studentId: attendanceAccount.studentId,
+      sessionId: attendanceAccount.sessionId,
+      isPresent: attendanceAccount.isPresent,
+      markedAt: attendanceAccount.markedAt.toString(),
+      isFinalized: attendanceAccount.isFinalized,
+      creator: attendanceAccount.creator.toString()
     };
   } catch (err) {
-    console.error('Error fetching attendance record:', err.message);
+    console.error('Error fetching attendance record:', err);
     throw err;
   }
 }
 
-module.exports = { storeAttendanceRecord, getAttendanceRecord };
+/**
+ * Finalize an attendance record on the blockchain.
+ * @param {string} accountPublicKey - The public key of the attendance account to finalize.
+ * @returns {Promise<string>} - The transaction signature.
+ */
+async function finalizeAttendanceRecord(accountPublicKey) {
+  try {
+    // Initialize the program
+    const { program } = getProgram();
+    
+    // Parse the public key
+    const attendanceKey = new PublicKey(accountPublicKey);
+    
+    // Call the finalize_attendance instruction
+    const tx = await program.methods
+      .finalizeAttendance()
+      .accounts({
+        attendance: attendanceKey,
+        user: program.provider.wallet.publicKey,
+      })
+      .rpc();
+    
+    console.log(`Finalization transaction signature: ${tx}`);
+    console.log(`Attendance record finalized: ${accountPublicKey}`);
+    
+    return tx;
+  } catch (err) {
+    console.error('Error finalizing attendance record:', err);
+    throw err;
+  }
+}
+
+/**
+ * Get all attendance records for a specific session.
+ * @param {string} sessionId - The session ID to filter by.
+ * @returns {Promise<Array>} - Array of attendance records.
+ */
+async function getAttendanceRecordsBySession(sessionId) {
+  try {
+    const { program } = getProgram();
+    
+    // This uses Anchor's getProgramAccounts with a memcmp filter
+    // to find all attendance accounts with the matching sessionId
+    const accounts = await program.account.attendance.all([
+      {
+        memcmp: {
+          offset: 8, // Skip the 8-byte discriminator
+          bytes: anchor.utils.bytes.utf8.encode(sessionId)
+        }
+      }
+    ]);
+    
+    return accounts.map(acc => ({
+      publicKey: acc.publicKey.toString(),
+      studentId: acc.account.studentId,
+      sessionId: acc.account.sessionId,
+      isPresent: acc.account.isPresent,
+      markedAt: acc.account.markedAt.toString(),
+      isFinalized: acc.account.isFinalized,
+      creator: acc.account.creator.toString()
+    }));
+  } catch (err) {
+    console.error('Error fetching attendance records by session:', err);
+    throw err;
+  }
+}
+
+/**
+ * Get all attendance records for a specific student.
+ * @param {string} studentId - The student ID to filter by.
+ * @returns {Promise<Array>} - Array of attendance records.
+ */
+async function getAttendanceRecordsByStudent(studentId) {
+  try {
+    const { program } = getProgram();
+    
+    // Use getProgramAccounts with a filter for studentId
+    const accounts = await program.account.attendance.all([
+      {
+        memcmp: {
+          offset: 8, // Skip the 8-byte discriminator
+          bytes: anchor.utils.bytes.utf8.encode(studentId)
+        }
+      }
+    ]);
+    
+    return accounts.map(acc => ({
+      publicKey: acc.publicKey.toString(),
+      studentId: acc.account.studentId,
+      sessionId: acc.account.sessionId,
+      isPresent: acc.account.isPresent,
+      markedAt: acc.account.markedAt.toString(),
+      isFinalized: acc.account.isFinalized,
+      creator: acc.account.creator.toString()
+    }));
+  } catch (err) {
+    console.error('Error fetching attendance records by student:', err);
+    throw err;
+  }
+}
+
+module.exports = {
+  storeAttendanceRecord,
+  getAttendanceRecord,
+  finalizeAttendanceRecord,
+  getAttendanceRecordsBySession,
+  getAttendanceRecordsByStudent
+};
