@@ -3,7 +3,7 @@ const router = express.Router();
 const { getAttendanceRecord } = require('../services/solanaService');
 
 // Middleware for authentication
-const { isAuth } = require('../../backend/middlewares/authMiddleware');
+const { isAuth } = require('../middlewares/authMiddleware');
 
 // Endpoint to fetch attendance records
 router.get('/:accountPublicKey', isAuth, async (req, res) => {
