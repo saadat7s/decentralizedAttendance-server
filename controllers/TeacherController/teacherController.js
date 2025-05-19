@@ -299,3 +299,161 @@ exports.finalizeAttendance = async (req, res) => {
       res.status(500).json({ message: 'Internal server error', error: err.message });
     }
   };
+
+
+  // controllers/TeacherController/teacherController.js
+
+/**
+ * Get attendance records for a specific class
+ * Teachers can only view attendance for classes they are assigned to
+ */
+exports.getClassAttendanceRecords = async (req, res) => {
+    const { classId } = req.params;
+    const teacherId = req.user.id;
+  
+    try {
+      // Check if the class exists and if the teacher is assigned to it
+      const classDetails = await Class.findOne({ 
+        _id: classId, 
+        'teacher.id': teacherId 
+      });
+  
+      if (!classDetails) {
+        return res.status(403).json({ 
+          message: 'Class not found or you are not authorized to view this class' 
+        });
+      }
+  
+      // Find all sessions for this class
+      const sessions = await Session.find({ classId });
+      
+      if (sessions.length === 0) {
+        return res.status(404).json({ message: 'No sessions found for this class' });
+      }
+  
+      // Get session IDs
+      const sessionIds = sessions.map(session => session._id);
+  
+      // Get attendance records for all sessions in this class
+      const attendanceRecords = await AttendanceRecord.find({
+        session: { $in: sessionIds }
+      }).populate('student', 'name')
+        .populate('session', 'name date');
+  
+      // Group attendance by session
+      const attendanceBySession = {};
+      sessions.forEach(session => {
+        const sessionId = session._id.toString();
+        const sessionRecords = attendanceRecords.filter(
+          record => record.session._id.toString() === sessionId
+        );
+        
+        // Calculate attendance stats
+        const totalStudents = sessionRecords.length;
+        const presentStudents = sessionRecords.filter(record => record.isPresent).length;
+        const attendanceRate = totalStudents > 0 ? (presentStudents / totalStudents) * 100 : 0;
+        
+        attendanceBySession[sessionId] = {
+          sessionName: session.name,
+          sessionDate: session.date,
+          totalStudents,
+          presentStudents,
+          attendanceRate: attendanceRate.toFixed(2) + '%',
+          records: sessionRecords.map(record => ({
+            studentId: record.student._id,
+            studentName: record.student.name,
+            isPresent: record.isPresent,
+            markedAt: record.markedAt
+          }))
+        };
+      });
+  
+      res.status(200).json({
+        message: 'Attendance records retrieved successfully',
+        className: classDetails.courseName,
+        courseId: classDetails.courseId,
+        attendanceBySession
+      });
+  
+    } catch (error) {
+      console.error('Error retrieving class attendance records:', error);
+      res.status(500).json({ 
+        message: 'Failed to retrieve attendance records', 
+        error: error.message 
+      });
+    }
+  };
+  
+  /**
+   * Get attendance summary for all classes assigned to the teacher
+   */
+  exports.getTeacherAttendanceSummary = async (req, res) => {
+    const teacherId = req.user.id;
+  
+    try {
+      // Find all classes assigned to this teacher
+      const classes = await Class.find({ 'teacher.id': teacherId });
+      
+      if (classes.length === 0) {
+        return res.status(404).json({ message: 'No classes assigned to you' });
+      }
+  
+      const classIds = classes.map(cls => cls._id);
+      
+      // Find all sessions for these classes 
+      const sessions = await Session.find({ classId: { $in: classIds } });
+      
+      if (sessions.length === 0) {
+        return res.status(404).json({ message: 'No sessions found for your classes' });
+      }
+      
+      const sessionIds = sessions.map(session => session._id);
+      
+      // Get attendance records for all sessions
+      const attendanceRecords = await AttendanceRecord.find({
+        session: { $in: sessionIds }
+      });
+      
+      // Group by class
+      const summary = [];
+      for (const cls of classes) {
+        const classId = cls._id.toString();
+        const classSessions = sessions.filter(session => 
+          session.classId.toString() === classId
+        );
+        
+        if (classSessions.length === 0) continue;
+        
+        const sessionIds = classSessions.map(session => session._id.toString());
+        const classAttendance = attendanceRecords.filter(record => 
+          sessionIds.includes(record.session.toString())
+        );
+        
+        // Calculate class stats
+        const totalRecords = classAttendance.length;
+        const presentCount = classAttendance.filter(record => record.isPresent).length;
+        const attendanceRate = totalRecords > 0 ? (presentCount / totalRecords) * 100 : 0;
+        
+        summary.push({
+          classId: cls._id,
+          className: cls.courseName,
+          courseId: cls.courseId,
+          sessionsCount: classSessions.length,
+          lastSession: classSessions.sort((a, b) => b.date - a.date)[0]?.date || null,
+          attendanceRate: attendanceRate.toFixed(2) + '%'
+        });
+      }
+      
+      res.status(200).json({
+        message: 'Attendance summary retrieved successfully',
+        summary
+      });
+      
+    } catch (error) {
+      console.error('Error retrieving teacher attendance summary:', error);
+      res.status(500).json({ 
+        message: 'Failed to retrieve attendance summary', 
+        error: error.message 
+      });
+    }
+  };
