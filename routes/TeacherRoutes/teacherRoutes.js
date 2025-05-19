@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { check } = require('express-validator');
-const { getAssignedClasses, getStudentsByClass, getSessionByClass, startSessionById, finalizeAttendance } = require('../../controllers/TeacherController/teacherController');
+const { getAssignedClasses, getStudentsByClass, getSessionByClass, startSessionById, finalizeAttendance, getClassAttendanceRecords, getTeacherAttendanceSummary  } = require('../../controllers/TeacherController/teacherController');
 const { isAuth } = require('../../middlewares/authMiddleware');
 const { storeAttendanceRecord } = require('../../services/solanaService');
 
@@ -27,6 +27,12 @@ router.patch('/finalize-attendance', isAuth, finalizeAttendance)
 
 // broadcast Attendance
 router.post('/store-attendance', isAuth, storeAttendanceRecord)
+
+// Get attendance records for a specific class
+router.get('/attendance/class/:classId', isAuth, getClassAttendanceRecords);
+
+// Get attendance summary for all classes
+router.get('/attendance/summary', isAuth, getTeacherAttendanceSummary);
 
 
 
